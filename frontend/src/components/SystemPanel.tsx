@@ -101,7 +101,7 @@ export default function SystemPanel(props: SystemPanelProps) {
     </svg>
   );
 
-  const MetricCard = ({ title, icon, children }: { title: string; icon: Component; children: Component }) => (
+  const MetricCard = ({ title, icon, children }: { title: string; icon: JSX.Element; children: JSX.Element }) => (
     <div class="panel p-5">
       <div class="panel-header">
         {icon}

@@ -13,7 +13,7 @@ import SessionPanel from './components/SessionPanel';
 import SystemPanel from './components/SystemPanel';
 import CronPanel from './components/CronPanel';
 import ProfileManager from './components/ProfileManager';
-//import ModalChat from './components/ModalChat';
+import OnboardingModal from './components/OnboardingModal';
 import ProfileChat from './components/ProfileChat';
 const WikiPanel = lazy(() => import('./components/WikiPanel'));
 
@@ -443,6 +443,7 @@ export default function App() {
       </Show>
     </div>
 
+      <OnboardingModal />
     </>
   );
 }

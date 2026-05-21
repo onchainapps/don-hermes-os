@@ -2,11 +2,13 @@
  * ProfileChat — Per-profile floating chat modal
  * Routes through the backend gateway proxy (/gp) which handles
  * profile port + auth key resolution from the profile's .env.
- * Full feature parity with ModalChat: IndexedDB persistence,
+ * Falls back to global gateway auth when no profile name is given.
+ * Full feature parity with the old ModalChat: IndexedDB persistence,
  * slash commands, voice input, file attachment, token usage.
  */
 
 import { createSignal, createEffect, onMount, onCleanup, For, Show, Index } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import MessageContent from '../lib/chat-ui/components/MessageContent';
 
 interface ProfileChatProps {
@@ -112,9 +114,9 @@ export default function ProfileChat(props: ProfileChatProps) {
   });
   const [isDragging, setIsDragging] = createSignal(false);
   const [isResizing, setIsResizing] = createSignal(false);
-  const [size, setSize] = createSignal({ width: 520, height: 620 });
+  const [size, setSize] = createSignal({ width: 720, height: 620 });
   const [sessionId, setSessionId] = createSignal<string | null>(null);
-  const [modelInfo, setModelInfo] = createSignal({ name: 'grok-4.3', context: 10000000 });
+  const [modelInfo, setModelInfo] = createSignal({ name: 'Qwen3.6-27B-FP8', context: 262111 });
   const [showSlash, setShowSlash] = createSignal(false);
   const [slashFilter, setSlashFilter] = createSignal('');
 
@@ -139,6 +141,8 @@ export default function ProfileChat(props: ProfileChatProps) {
   let saveTimeout: number | null = null;
   let fileInputRef: HTMLInputElement | undefined;
   let messagesEndRef: HTMLDivElement | undefined;
+  let abortController: AbortController | null = null;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   // Auto-scroll on new messages
   let prevMsgCount = 0;
@@ -206,7 +210,16 @@ export default function ProfileChat(props: ProfileChatProps) {
       return true;
     }
     if (cmd === '/stop') {
-      // handled by isStreaming check — user can just send empty to stop
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+      if (reader) {
+        reader.cancel().catch(() => {});
+        reader = null;
+      }
+      setIsStreaming(false);
+      stopThinkingAnimation();
       return true;
     }
     if (cmd === '/retry') {
@@ -305,7 +318,9 @@ export default function ProfileChat(props: ProfileChatProps) {
           });
         }
       }
-    } catch {}
+    } catch {
+      console.warn(`[ProfileChat:${props.profileName}] fetchModelInfo failed`);
+    }
   }
 
   // ── Drag ──
@@ -382,18 +397,47 @@ export default function ProfileChat(props: ProfileChatProps) {
 
   // ── Send message (streaming via Runs API) ──
 
+  const stopStreaming = () => {
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+    if (reader) {
+      reader.cancel().catch(() => {});
+      reader = null;
+    }
+    setIsStreaming(false);
+    stopThinkingAnimation();
+  };
+
   const sendMessage = async () => {
     const text = input().trim();
-    if (!text || isStreaming()) return;
+    if (!text) return;
 
-    // Handle slash commands
+    // Handle /stop while streaming — bypass isStreaming guard
+    if (text.startsWith('/')) {
+      if (text === '/stop') {
+        setInput('');
+        stopStreaming();
+        return;
+      }
+      // Other slash commands are handled after the isStreaming check
+    }
+
+    if (isStreaming()) return;
+    if (abortController) {
+      log('Previous stream still active, preventing concurrent send');
+      return;
+    }
+
+    // Handle slash commands (non-stop)
     if (text.startsWith('/')) {
       setInput('');
       const handled = await handleSlashCommand(text);
       if (handled) return;
     }
 
-    log('Sending message', { text, gatewayPort: props.gatewayPort });
+    log('Sending message', { text });
 
     const userMsg: Message = { role: 'user', content: text };
     const currentMessages = messages();
@@ -406,6 +450,9 @@ export default function ProfileChat(props: ProfileChatProps) {
     setMessages(prev => [...prev, assistantPlaceholder]);
 
     let fullContent = '';
+    abortController = new AbortController();
+    const signal = abortController.signal;
+    reader = null;
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -422,6 +469,7 @@ export default function ProfileChat(props: ProfileChatProps) {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
+        signal,
       });
 
       log('Response status', createRes.status);
@@ -442,10 +490,19 @@ export default function ProfileChat(props: ProfileChatProps) {
       const streamHeaders: Record<string, string> = { 'Accept': 'text/event-stream' };
       if (props.profileName) streamHeaders['X-Hermes-Profile'] = props.profileName;
 
-      const streamRes = await fetch(`${apiBase}/v1/runs/${runId}/events`, { headers: streamHeaders });
-      if (!streamRes.ok || !streamRes.body) throw new Error(`Stream failed: ${streamRes.status}`);
+      const streamRes = await fetch(`${apiBase}/v1/runs/${runId}/events`, { headers: streamHeaders, signal });
+      if (!streamRes.ok || !streamRes.body) {
+        const errorMsg = `Stream failed: ${streamRes.status}`;
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === 'assistant') last.content = errorMsg;
+          return updated;
+        });
+        throw new Error(errorMsg);
+      }
 
-      const reader = streamRes.body.getReader();
+      reader = streamRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -460,6 +517,22 @@ export default function ProfileChat(props: ProfileChatProps) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim();
             if (data === '[DONE]') continue;
+            // Check for requestCancelled cancellation event
+            if (data.includes('"requestCancelled"') || data.includes('"cancelled"')) {
+              fullContent += '\n\n*Generation cancelled.*';
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastIndex = newMessages.length - 1;
+                if (newMessages[lastIndex]?.role === 'assistant') {
+                  newMessages[lastIndex] = { ...newMessages[lastIndex], content: fullContent };
+                }
+                return newMessages;
+              });
+              // Break out of SSE loop — don't wait for more events
+              reader?.cancel().catch(() => {});
+              reader = null;
+              break;
+            }
             try {
               const event = JSON.parse(data);
               if (event.event === "message.delta" && event.delta) {
@@ -468,7 +541,7 @@ export default function ProfileChat(props: ProfileChatProps) {
                   const newMessages = [...prev];
                   const lastIndex = newMessages.length - 1;
                   if (newMessages[lastIndex]?.role === 'assistant') {
-                    newMessages[lastIndex] = { ...newMessages[lastIndex], content: fullContent };
+                    newMessages[lastIndex] = { ...newMessages[lastIndex], content: newMessages[lastIndex].content + event.delta };
                   }
                   return newMessages;
                 });
@@ -483,24 +556,35 @@ export default function ProfileChat(props: ProfileChatProps) {
                   return newMessages;
                 });
               }
-            } catch {}
+            } catch (parseErr) {
+              console.warn(`[ProfileChat:${props.profileName}] SSE parse error:`, parseErr);
+            }
           }
         }
       }
 
       log('Received response');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      log('Error sending message', msg);
-      setMessages(prev => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last.role === 'assistant') last.content = fullContent || `Error: ${msg}`;
-        return updated;
-      });
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        log('Request aborted');
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        log('Error sending message', msg);
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === 'assistant') last.content = fullContent || `Error: ${msg}`;
+          return updated;
+        });
+      }
     } finally {
       setIsStreaming(false);
       stopThinkingAnimation();
+      if (reader) {
+        reader.cancel().catch(() => {});
+        reader = null;
+      }
+      abortController = null;
       scheduleSave();
     }
   };
@@ -564,15 +648,16 @@ export default function ProfileChat(props: ProfileChatProps) {
     window.removeEventListener('mousemove', handleResizeMove);
     window.removeEventListener('mouseup', endResize);
     if (saveTimeout) clearTimeout(saveTimeout);
-    stopThinkingAnimation();
+    stopStreaming();
   });
 
   // ── Render ──
 
   return (
     <Show when={isOpen()}>
-      <div
-        class="fixed z-[999999] bg-zinc-950 text-zinc-100 shadow-2xl border border-zinc-800 flex flex-col overflow-hidden rounded-2xl"
+      <Portal>
+        <div
+          class="fixed z-[999999] bg-zinc-950 text-zinc-100 shadow-2xl border border-zinc-800 flex flex-col overflow-hidden rounded-2xl relative"
         style={{
           position: 'fixed',
           left: `${position().x}px`,
@@ -594,7 +679,7 @@ export default function ProfileChat(props: ProfileChatProps) {
                 </div>
               )}
               <div class="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">
-                {modelInfo().name}
+                {modelInfo().name} · {Math.floor(modelInfo().context / 1000)}k
               </div>
             </div>
             <div class="flex gap-2">
@@ -678,7 +763,7 @@ export default function ProfileChat(props: ProfileChatProps) {
                     value={input()}
                     onInput={handleInput}
                     onKeyDown={handleKeyDown}
-                    disabled={isStreaming()}
+                    disabled={isStreaming() && input().trim() !== '/stop'}
                   />
                   <Show when={showSlash()}>
                     <div class="absolute bottom-full mb-1 left-0 w-full bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl max-h-48 overflow-auto z-50 text-sm">
@@ -702,10 +787,9 @@ export default function ProfileChat(props: ProfileChatProps) {
                 </div>
                 <button
                   onClick={sendMessage}
-                  disabled={isStreaming()}
-                  class="px-6 py-2 bg-emerald-600 rounded-xl text-sm font-medium"
+                  class={`px-6 py-2 rounded-xl text-sm font-medium ${isStreaming() ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600'}`}
                 >
-                  Send
+                  {isStreaming() ? 'Stop' : 'Send'}
                 </button>
               </div>
             </div>
@@ -723,6 +807,7 @@ export default function ProfileChat(props: ProfileChatProps) {
             </div>
           </Show>
         </div>
+      </Portal>
     </Show>
   );
 }

@@ -240,14 +240,6 @@ const LOG_FILES: Record<string, string> = {
 
 let editorContext = { filePath: '', fileName: '', language: '', projectRoot: '', updatedAt: 0 };
 
-function requireAuth(req: any, res: any) {
-  if (!DASHBOARD_AUTH_TOKEN) return true;
-  const auth = req.headers['authorization'];
-  if (auth === `Bearer ${DASHBOARD_AUTH_TOKEN}`) return true;
-  return jsonErr(401, 'Unauthorized');
-  return false;
-}
-
 function getStats() {
   const cpuInfo = cpus();
   const total = totalmem();
@@ -1322,31 +1314,43 @@ async function handleRequest(req: Request): Response {
     return jsonErr(500, "Internal error");
   }
   
-  // Gateway proxy - forwards requests to Hermes gateway
-  if (pathname.startsWith('/api/gateway/') && method === 'POST') {
+  // Gateway proxy - forwards requests to Hermes gateway (GET, POST)
+  if (pathname.startsWith('/api/gateway/') && (method === 'POST' || method === 'GET')) {
     try {
       const gatewayPath = pathname.replace('/api/gateway', '');
-      const body = await req.text();
       
       const incomingSessionId = req.headers.get('x-hermes-session-id');
       const proxyHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
         ...(GATEWAY_AUTH ? { 'Authorization': `Bearer ${GATEWAY_AUTH}` } : {}),
       };
       if (incomingSessionId) {
         proxyHeaders['X-Hermes-Session-Id'] = incomingSessionId;
       }
-      const proxyRes = await fetch(`http://${GATEWAY_HOST}:${GATEWAY_PORT}${gatewayPath}`, {
-        method: 'POST',
+
+      const proxyOpts: any = {
+        method,
         headers: proxyHeaders,
-        body,
-      });
-      
-      const responseHeaders: Record<string, string> = {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
       };
+
+      // POST requests carry a body; GET requests do not
+      if (method === 'POST') {
+        proxyOpts.body = await req.text();
+        proxyHeaders['Content-Type'] = 'application/json';
+      }
+
+      const proxyRes = await fetch(`http://${GATEWAY_HOST}:${GATEWAY_PORT}${gatewayPath}`, proxyOpts);
+      
+      const responseHeaders: Record<string, string> = {};
+      // Set proper content type based on upstream response
+      const upstreamContentType = proxyRes.headers.get('content-type') || '';
+      if (upstreamContentType.includes('text/event-stream') || gatewayPath.includes('/events')) {
+        responseHeaders['Content-Type'] = 'text/event-stream';
+        responseHeaders['Cache-Control'] = 'no-cache';
+        responseHeaders['Connection'] = 'keep-alive';
+      } else {
+        responseHeaders['Content-Type'] = upstreamContentType || 'application/json';
+      }
+      
       const sessionId = proxyRes.headers.get('x-hermes-session-id');
       if (sessionId) responseHeaders['X-Hermes-Session-Id'] = sessionId;
       
@@ -1431,7 +1435,8 @@ async function handleGatewayProxy(req: Request, pathname: string): Promise<Respo
     const profile = readProfileEnv(profileName);
     if (profile.port) {
       targetPort = parseInt(profile.port);
-      targetHost = '192.168.1.141';
+      // Use the same GATEWAY_HOST for profile-specific ports
+      targetHost = GATEWAY_HOST;
     }
     if (profile.key) {
       authKey = profile.key;
@@ -1449,11 +1454,14 @@ async function handleGatewayProxy(req: Request, pathname: string): Promise<Respo
   }
 
   try {
+    const timeout = targetPath.includes('/events') ? undefined : 120000;
+    const signal = timeout ? AbortSignal.timeout(timeout) : undefined;
+
     const proxyRes = await fetch(targetUrl, {
       method: req.method,
       headers: proxyHeaders,
       body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
-      signal: AbortSignal.timeout(120000),
+      signal,
     });
 
     // For streaming endpoints (SSE), preserve the response body as-is

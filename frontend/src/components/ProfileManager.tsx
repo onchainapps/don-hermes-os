@@ -1,5 +1,5 @@
 import { createSignal, For, Show, createMemo, createEffect, onMount } from 'solid-js';
-import { hermesGet, hermesPost, hermesDelete } from '../lib/hermesApi';
+import { hermesGet, hermesPost, hermesDelete, hermesPut } from '../lib/hermesApi';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -7,6 +7,7 @@ interface HermesProfile {
   name: string;
   status: 'active' | 'standby' | 'not-yet-created';
   gatewayPort?: number;
+  apiKey?: string;
 }
 
 interface ProfileDetails {
@@ -147,11 +148,7 @@ export default function ProfileManager() {
     if (!name) return;
     setConfigStatus('Saving...');
     try {
-      await fetch(`/api/hermes/profiles/config/raw?name=${encodeURIComponent(name)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ yaml_text: configYaml() }),
-      });
+      await hermesPut(`/profiles/config/raw?name=${encodeURIComponent(name)}`, { yaml_text: configYaml() });
       setConfigStatus('Saved ✓');
       setTimeout(() => setConfigStatus(null), 2000);
     } catch (e: any) {
