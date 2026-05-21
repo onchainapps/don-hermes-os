@@ -559,65 +559,81 @@ async function handleRequest(req: Request): Response {
             const soulContent = body.soul || '';
             const template = body.template || 'default';
 
-            // 1. Create the profile as a clone of don-template
-            // This ensures every new profile starts with the same base configuration, soul, skills, etc.
+            // 1. Create the profile (clone from don-template if it exists, otherwise fresh)
             const profileDir = `${process.env.HOME || '/home/don'}/.hermes/profiles/${name}`;
 
             if (existsSync(profileDir)) {
               return jsonErr(409, `Profile "${name}" already exists`);
             }
 
-            execSync(`hermes profile create ${JSON.stringify(name)} --clone --clone-from don-template --no-alias`, {
-              timeout: 30000,
-              encoding: 'utf-8',
-            });
+            const templateName = template || 'default';
+            const templateDir = `${process.env.HOME || '/home/don'}/.hermes/profiles/${templateName}`;
+            const hasTemplate = existsSync(templateDir) && templateName !== 'default';
+
+            if (hasTemplate) {
+              execSync(`hermes profile create ${JSON.stringify(name)} --clone --clone-from ${JSON.stringify(templateName)} --no-alias`, {
+                timeout: 30000,
+                encoding: 'utf-8',
+              });
+            } else {
+              execSync(`hermes profile create ${JSON.stringify(name)} --no-alias`, {
+                timeout: 30000,
+                encoding: 'utf-8',
+              });
+            }
 
             // 2. Write SOUL.md if provided
             if (soulContent) {
               writeFileSync(`${profileDir}/SOUL.md`, soulContent);
             }
 
-            // 3. Copy .env from don-template (with unique port + fresh key)
-            const templateEnvPath = `${process.env.HOME || '/home/don'}/.hermes/profiles/don-template/.env`;
+            // 3. Set up .env with unique port + fresh API key
+            const templateEnvPath = `${process.env.HOME || '/home/don'}/.hermes/profiles/${templateName}/.env`;
             const newEnvPath = `${profileDir}/.env`;
 
-            if (existsSync(templateEnvPath)) {
+            // Generate a new strong API key
+            const newApiKey = randomBytes(32).toString('hex');
+
+            // Assign a unique port (starting from 8650)
+            const usedPorts = new Set();
+            try {
+              const allProfiles = readdirSync(`${process.env.HOME || '/home/don'}/.hermes/profiles`);
+              for (const p of allProfiles) {
+                const pEnv = `${process.env.HOME || '/home/don'}/.hermes/profiles/${p}/.env`;
+                if (existsSync(pEnv)) {
+                  const content = readFileSync(pEnv, 'utf-8');
+                  const portMatch = content.match(/API_SERVER_PORT=(\d+)/);
+                  if (portMatch) usedPorts.add(parseInt(portMatch[1]));
+                }
+              }
+            } catch (_) {}
+
+            let newPort = 8650;
+            while (usedPorts.has(newPort)) newPort++;
+
+            if (hasTemplate && existsSync(templateEnvPath)) {
+              // Clone from template: copy .env and mutate port + key
               let envContent = readFileSync(templateEnvPath, 'utf-8');
-
-              // Generate a new strong API key
-              const newApiKey = randomBytes(32).toString('hex');
-
-              // Replace or add API_SERVER_KEY
               if (envContent.includes('API_SERVER_KEY=')) {
                 envContent = envContent.replace(/API_SERVER_KEY=.*/g, `API_SERVER_KEY=${newApiKey}`);
               } else {
                 envContent += `\nAPI_SERVER_KEY=${newApiKey}`;
               }
-
-              // Assign a unique port (starting from 8650)
-              const usedPorts = new Set();
-              try {
-                const allProfiles = readdirSync(`${process.env.HOME || '/home/don'}/.hermes/profiles`);
-                for (const p of allProfiles) {
-                  const pEnv = `${process.env.HOME || '/home/don'}/.hermes/profiles/${p}/.env`;
-                  if (existsSync(pEnv)) {
-                    const content = readFileSync(pEnv, 'utf-8');
-                    const portMatch = content.match(/API_SERVER_PORT=(\d+)/);
-                    if (portMatch) usedPorts.add(parseInt(portMatch[1]));
-                  }
-                }
-              } catch (_) {}
-
-              let newPort = 8650;
-              while (usedPorts.has(newPort)) newPort++;
-
               if (envContent.includes('API_SERVER_PORT=')) {
                 envContent = envContent.replace(/API_SERVER_PORT=.*/g, `API_SERVER_PORT=${newPort}`);
               } else {
                 envContent += `\nAPI_SERVER_PORT=${newPort}`;
               }
-
               writeFileSync(newEnvPath, envContent);
+            } else {
+              // No template: generate fresh .env with defaults
+              writeFileSync(newEnvPath, [
+                `API_SERVER_KEY=${newApiKey}`,
+                `API_SERVER_PORT=${newPort}`,
+                'GATEWAY_AUTH=',
+                'GATEWAY_HOST=127.0.0.1',
+                'GATEWAY_PORT=8642',
+              ].join('\n') + '\n');
             }
             if (description) {
               const configPath = `${profileDir}/config.yaml`;

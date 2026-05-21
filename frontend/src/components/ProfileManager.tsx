@@ -38,6 +38,7 @@ export default function ProfileManager() {
   const [newName, setNewName] = createSignal('');
   const [newDescription, setNewDescription] = createSignal('');
   const [newSoul, setNewSoul] = createSignal('');
+  const [selectedTemplate, setSelectedTemplate] = createSignal('default');
   const [isCreating, setIsCreating] = createSignal(false);
   const [profileDetails, setProfileDetails] = createSignal<ProfileDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = createSignal(false);
@@ -86,6 +87,7 @@ export default function ProfileManager() {
         name: newName(),
         description: newDescription(),
         soul: newSoul(),
+        template: selectedTemplate(),
       });
       setNewName('');
       setNewDescription('');
@@ -192,7 +194,7 @@ export default function ProfileManager() {
       {/* Create Profile Form */}
       <form onSubmit={handleCreate} class="mb-8 p-4 rounded-lg border border-dashed border-hermes-cyan/30 bg-hermes-cyan/05">
         <div class="text-[10px] text-hermes-cyan/70 mb-2 font-mono tracking-widest">CREATE NEW AGENT PROFILE</div>
-        <div class="text-[9px] text-hermes-text-dim/60 mb-3">New profiles are cloned from <span class="text-hermes-cyan">don-template</span> (config, soul, skills, env).</div>
+        <div class="text-[9px] text-hermes-text-dim/60 mb-3">Clone from an existing profile or <span class="text-hermes-cyan">default</span> (fresh Hermes base).</div>
 
         <div class="space-y-3">
           {/* Name */}
@@ -219,6 +221,23 @@ export default function ProfileManager() {
               onInput={(e) => setNewDescription(e.currentTarget.value)}
               disabled={isCreating()}
             />
+          </div>
+
+          {/* Template */}
+          <div>
+            <label class="block text-[10px] text-hermes-text-dim mb-1">CLONE FROM (optional)</label>
+            <select
+              class="w-full bg-black/40 border border-white/10 rounded px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50"
+              value={selectedTemplate()}
+              onChange={(e) => setSelectedTemplate(e.currentTarget.value)}
+              disabled={isCreating()}
+            >
+              <option value="default">default (fresh Hermes base)</option>
+              <For each={profiles()}>
+                {(p) => <option value={p.name}>{p.name}</option>}
+              </For>
+            </select>
+            <div class="text-[9px] text-hermes-text-dim/60 mt-1">Configuration, soul, and skills will be copied from the selected profile.</div>
           </div>
 
           {/* Soul / System Prompt */}
