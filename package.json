@@ -1,0 +1,13 @@
+{
+  "name": "don-hermes-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hermes Agent dashboard with per-profile gateway proxy",
+  "scripts": {
+    "dev:frontend": "cd frontend && bun run dev",
+    "dev:backend": "cd backend && bun run dev",
+    "dev": "bun run dev:backend & bun run dev:frontend",
+    "build": "cd frontend && bun run build",
+    "start": "cd backend && bun run server.ts"
+  }
+}

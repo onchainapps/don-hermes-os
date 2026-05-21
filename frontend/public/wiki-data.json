@@ -1,0 +1,528 @@
+{
+  "generated": "2026-04-09T18:03:13.775228",
+  "stats": {
+    "totalPages": 22,
+    "transcriptCount": 1180,
+    "transcriptSizeMB": 5.5,
+    "totalWords": 6110,
+    "orphanCount": 5,
+    "categories": {
+      "entities": 7,
+      "concepts": 6,
+      "milestones": 1,
+      "lessons": 5,
+      "decisions": 3
+    }
+  },
+  "pages": [
+    {
+      "name": "bakon",
+      "category": "entities",
+      "title": "Bakon",
+      "type": "entity",
+      "tags": "[collab, bakon, identity]",
+      "created": "2026-04-08",
+      "updated": "2026-04-08",
+      "wordCount": 270,
+      "links": [
+        "enter-the-mandala",
+        "vibe-coding",
+        "memory",
+        "vibe-coding",
+        "tars-mode-personality",
+        "preference-live-data",
+        "enter-the-mandala",
+        "the-thirteen"
+      ]
+    },
+    {
+      "name": "enter-the-mandala",
+      "category": "entities",
+      "title": "Enter The Mandala",
+      "type": "entity",
+      "tags": "[project, mandala, cross-media, unreal-engine, blockchain, cardano, ethereum]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 376,
+      "links": [
+        "the-thirteen",
+        "bakon",
+        "the-thirteen",
+        "bakon",
+        "vibe-coding"
+      ]
+    },
+    {
+      "name": "the-thirteen",
+      "category": "entities",
+      "title": "The Thirteen",
+      "type": "entity",
+      "tags": "[project, mandala, characters, clans]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 515,
+      "links": [
+        "enter-the-mandala",
+        "bakon",
+        "enter-the-mandala",
+        "bakon"
+      ]
+    },
+    {
+      "name": "softwaveppi",
+      "category": "entities",
+      "title": "SoftWavePPI",
+      "type": "entity",
+      "tags": "[project, softwaveppi, solidjs, bun, sqlite]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 235,
+      "links": [
+        "softwaveppi-fix-pattern",
+        "bakon",
+        "vibe-coding",
+        "softwaveppi-cms-pattern",
+        "solidjs",
+        "bun"
+      ]
+    },
+    {
+      "name": "mirror-trader",
+      "category": "entities",
+      "title": "Mirror Trader",
+      "type": "entity",
+      "tags": "[project, mirror-trader, trading, ai, autonomous, kraken, polymarket]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 427,
+      "links": [
+        "bakon",
+        "preference-live-data",
+        "mirror-trader-unified-architecture",
+        "mirror-trader-day-trading-system",
+        "multi-agent-development",
+        "polymarket",
+        "kraken"
+      ]
+    },
+    {
+      "name": "harmoniclabs",
+      "category": "entities",
+      "title": "HarmonicLabs",
+      "type": "entity",
+      "tags": "[project, harmoniclabs, cardano, typescript]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 108,
+      "links": [
+        "bakon",
+        "cardano",
+        "blockfrost"
+      ]
+    },
+    {
+      "name": "guy-vs-guy",
+      "category": "entities",
+      "title": "Guy vs Guy",
+      "type": "entity",
+      "tags": "[project, guy-vs-guy, colyseus, babylonjs, multiplayer]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 163,
+      "links": [
+        "guy-vs-guy-setinterval-fix",
+        "bakon",
+        "colyseus",
+        "babylonjs"
+      ]
+    },
+    {
+      "name": "vibe-coding",
+      "category": "concepts",
+      "title": "Vibe Coding",
+      "type": "concept",
+      "tags": "[collab, workflow, bakon, preference-learned]",
+      "created": "2026-04-08",
+      "updated": "2026-04-08",
+      "wordCount": 210,
+      "links": [
+        "tars-mode-personality",
+        "opencode-server-api",
+        "bakon",
+        "tars-mode-personality",
+        "preference-live-data"
+      ]
+    },
+    {
+      "name": "native-guest-philosophy",
+      "category": "concepts",
+      "title": "Native Guest Philosophy",
+      "type": "concept",
+      "tags": "[identity, mirror, self-awareness, philosophy]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 192,
+      "links": [
+        "mirror-guest-model",
+        "tars-mode-personality",
+        "soul-md",
+        "tars-mode-personality",
+        "bakon"
+      ]
+    },
+    {
+      "name": "agent-harness-pattern",
+      "category": "concepts",
+      "title": "Agent Harness Pattern",
+      "type": "concept",
+      "tags": "[pattern, automation, collab, hermes-agent, llm]",
+      "created": "2026-04-04",
+      "updated": "2026-04-09",
+      "wordCount": 281,
+      "links": [
+        "hermes-agent",
+        "vibe-coding",
+        "native-guest-philosophy",
+        "mirror-trader"
+      ]
+    },
+    {
+      "name": "softwaveppi-cms-pattern",
+      "category": "concepts",
+      "title": "SoftWavePPI CMS Pattern",
+      "type": "concept",
+      "tags": "[tech, solidjs, bun, sqlite, pattern]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 454,
+      "links": [
+        "softwaveppi",
+        "vibe-coding",
+        "bakon"
+      ]
+    },
+    {
+      "name": "mirror-trader-day-trading-system",
+      "category": "concepts",
+      "title": "Mirror Trader Day Trading System",
+      "type": "concept",
+      "tags": "[project, mirror-trader, tech, typescript, pattern]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 513,
+      "links": [
+        "mirror-trader",
+        "mirror-trader-unified-architecture",
+        "preference-live-data",
+        "vibe-coding"
+      ]
+    },
+    {
+      "name": "opencode-server-api",
+      "category": "concepts",
+      "title": "OpenCode Server API",
+      "type": "concept",
+      "tags": "[skill, tool, integration, tech, typescript]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 287,
+      "links": [
+        "agent-harness-pattern",
+        "multi-agent-development"
+      ]
+    },
+    {
+      "name": "tars-mode-personality",
+      "category": "milestones",
+      "title": "TARS Mode: Don's Personality",
+      "type": "milestone",
+      "tags": "[identity, personality, tars-mode, self-awareness]",
+      "created": "2026-04-08",
+      "updated": "2026-04-08",
+      "wordCount": 191,
+      "links": [
+        "soul-md",
+        "vibe-coding",
+        "soul-md",
+        "mirror-guest-model",
+        "bakon"
+      ]
+    },
+    {
+      "name": "preference-live-data",
+      "category": "lessons",
+      "title": "Lesson: Live Data Only",
+      "type": "reflection",
+      "tags": "[session, lesson, mirror-trader, decision]",
+      "created": "2026-04-08",
+      "updated": "2026-04-08",
+      "wordCount": 222,
+      "links": [
+        "mirror-trader",
+        "bakon",
+        "mirror-trader",
+        "kraken"
+      ]
+    },
+    {
+      "name": "telegram-authorization-debugging",
+      "category": "lessons",
+      "title": "Telegram Gateway Authorization Debugging",
+      "type": "lesson",
+      "tags": "[telegram, gateway, debugging, authorization, configuration]",
+      "created": "2026-04-08",
+      "updated": "2026-04-08",
+      "wordCount": 245,
+      "links": [
+        "gateway-configuration",
+        "telegram-setup"
+      ]
+    },
+    {
+      "name": "headless-chrome-no-webgl",
+      "category": "lessons",
+      "title": "Lesson: Headless Chrome No WebGL",
+      "type": "lesson",
+      "tags": "[lesson, devops, browser-automation, babylonjs]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 215,
+      "links": [
+        "chrome-cdp-primary-workflow",
+        "web-development-browser-testing",
+        "babylonjs"
+      ]
+    },
+    {
+      "name": "preference-cardano-only",
+      "category": "lessons",
+      "title": "Preference: Cardano Only, No ETH",
+      "type": "reflection",
+      "tags": "[preference-learned, correction, collab, bakon, cardano]",
+      "created": "2026-04-04",
+      "updated": "2026-04-09",
+      "wordCount": 280,
+      "links": [
+        "bakon",
+        "mirror-trader",
+        "harmoniclabs",
+        "preference-live-data"
+      ]
+    },
+    {
+      "name": "solidjs-map-destructuring-bug",
+      "category": "lessons",
+      "title": "SolidJS Map Destructuring Bug",
+      "type": "lesson",
+      "tags": "[tech, solidjs, bug, lesson]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 168,
+      "links": [
+        "vibe-coding"
+      ]
+    },
+    {
+      "name": "chrome-cdp-primary-workflow",
+      "category": "decisions",
+      "title": "Chrome CDP as Primary Browser",
+      "type": "decision",
+      "tags": "[decision, devops, browser-automation, chrome-cdp]",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "wordCount": 218,
+      "links": [
+        "local-browser-cdp",
+        "vibe-coding",
+        "bakon"
+      ]
+    },
+    {
+      "name": "mirror-trader-unified-architecture",
+      "category": "decisions",
+      "title": "Mirror Trader Unified Architecture",
+      "type": "decision",
+      "tags": "[decision, architecture-choice, mirror-trader, trading, llm, typescript]",
+      "created": "2026-04-04",
+      "updated": "2026-04-09",
+      "wordCount": 261,
+      "links": [
+        "mirror-trader",
+        "preference-live-data",
+        "bakon",
+        "vibe-coding"
+      ]
+    },
+    {
+      "name": "multi-agent-development",
+      "category": "decisions",
+      "title": "Multi-Agent Development Pattern",
+      "type": "decision",
+      "tags": "[decision, pattern, hermes-agent, automation, collab]",
+      "created": "2026-04-04",
+      "updated": "2026-04-09",
+      "wordCount": 279,
+      "links": [
+        "mirror-trader",
+        "agent-harness-pattern",
+        "hermes-agent",
+        "bakon"
+      ]
+    }
+  ],
+  "linkGraph": {
+    "bakon": [
+      "enter-the-mandala",
+      "vibe-coding",
+      "memory",
+      "vibe-coding",
+      "tars-mode-personality",
+      "preference-live-data",
+      "enter-the-mandala",
+      "the-thirteen"
+    ],
+    "enter-the-mandala": [
+      "the-thirteen",
+      "bakon",
+      "the-thirteen",
+      "bakon",
+      "vibe-coding"
+    ],
+    "the-thirteen": [
+      "enter-the-mandala",
+      "bakon",
+      "enter-the-mandala",
+      "bakon"
+    ],
+    "softwaveppi": [
+      "softwaveppi-fix-pattern",
+      "bakon",
+      "vibe-coding",
+      "softwaveppi-cms-pattern",
+      "solidjs",
+      "bun"
+    ],
+    "mirror-trader": [
+      "bakon",
+      "preference-live-data",
+      "mirror-trader-unified-architecture",
+      "mirror-trader-day-trading-system",
+      "multi-agent-development",
+      "polymarket",
+      "kraken"
+    ],
+    "harmoniclabs": [
+      "bakon",
+      "cardano",
+      "blockfrost"
+    ],
+    "guy-vs-guy": [
+      "guy-vs-guy-setinterval-fix",
+      "bakon",
+      "colyseus",
+      "babylonjs"
+    ],
+    "vibe-coding": [
+      "tars-mode-personality",
+      "opencode-server-api",
+      "bakon",
+      "tars-mode-personality",
+      "preference-live-data"
+    ],
+    "native-guest-philosophy": [
+      "mirror-guest-model",
+      "tars-mode-personality",
+      "soul-md",
+      "tars-mode-personality",
+      "bakon"
+    ],
+    "agent-harness-pattern": [
+      "hermes-agent",
+      "vibe-coding",
+      "native-guest-philosophy",
+      "mirror-trader"
+    ],
+    "softwaveppi-cms-pattern": [
+      "softwaveppi",
+      "vibe-coding",
+      "bakon"
+    ],
+    "mirror-trader-day-trading-system": [
+      "mirror-trader",
+      "mirror-trader-unified-architecture",
+      "preference-live-data",
+      "vibe-coding"
+    ],
+    "opencode-server-api": [
+      "agent-harness-pattern",
+      "multi-agent-development"
+    ],
+    "tars-mode-personality": [
+      "soul-md",
+      "vibe-coding",
+      "soul-md",
+      "mirror-guest-model",
+      "bakon"
+    ],
+    "preference-live-data": [
+      "mirror-trader",
+      "bakon",
+      "mirror-trader",
+      "kraken"
+    ],
+    "telegram-authorization-debugging": [
+      "gateway-configuration",
+      "telegram-setup"
+    ],
+    "headless-chrome-no-webgl": [
+      "chrome-cdp-primary-workflow",
+      "web-development-browser-testing",
+      "babylonjs"
+    ],
+    "preference-cardano-only": [
+      "bakon",
+      "mirror-trader",
+      "harmoniclabs",
+      "preference-live-data"
+    ],
+    "solidjs-map-destructuring-bug": [
+      "vibe-coding"
+    ],
+    "chrome-cdp-primary-workflow": [
+      "local-browser-cdp",
+      "vibe-coding",
+      "bakon"
+    ],
+    "mirror-trader-unified-architecture": [
+      "mirror-trader",
+      "preference-live-data",
+      "bakon",
+      "vibe-coding"
+    ],
+    "multi-agent-development": [
+      "mirror-trader",
+      "agent-harness-pattern",
+      "hermes-agent",
+      "bakon"
+    ]
+  },
+  "orphans": [
+    "guy-vs-guy",
+    "telegram-authorization-debugging",
+    "headless-chrome-no-webgl",
+    "preference-cardano-only",
+    "solidjs-map-destructuring-bug"
+  ],
+  "recentActivity": [
+    "[2026-04-08] ingest | Initial seeding from memory",
+    "[2026-04-09] research | AI Crypto Trading Strategies",
+    "[2026-04-09] ingest | Full transcript export + project wiki pages",
+    "[2026-04-09] auto-ingest | Wiki autopilot pipeline activated",
+    "[2026-04-09] ingest | Bug lesson + skill updates",
+    "[2026-04-09] update | Hermes dashboard WIKI tab",
+    "[2026-04-08] create | Telegram Authorization Debugging Lesson",
+    "[2026-04-09] research | Enter The Mandala Deep Dive",
+    "[2026-04-09] auto-ingest | Wiki autopilot \u2014 transcript knowledge extraction",
+    "[2026-04-09] auto-ingest | Wiki autopilot \u2014 transcript knowledge extraction (round 2)"
+  ]
+}

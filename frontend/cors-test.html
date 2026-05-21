@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CORS + SSE Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; background: #111; color: #ddd; }
+    pre { background: #1a1a1a; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    .success { color: #0f0; }
+    .error { color: #f66; }
+    button { padding: 0.5rem 1rem; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>CORS + SSE Test for Hermes Gateway</h1>
+  
+  <div>
+    <label>Run ID (or use dummy): 
+      <input id="runId" value="run_500ada71c9b04ba58967a418e321284c" style="width: 420px;">
+    </label>
+  </div>
+  <br>
+  <button onclick="testFetch()">Test Fetch + SSE</button>
+  <button onclick="testPreflight()">Test OPTIONS Preflight Only</button>
+
+  <h3>Results</h3>
+  <pre id="output">Click a button above...</pre>
+
+  <script>
+    const GATEWAY = 'http://192.168.1.141:8642';
+    const AUTH = 'dev-key-12345';
+
+    function log(msg, type = 'info') {
+      const out = document.getElementById('output');
+      const prefix = type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ';
+      out.textContent += prefix + msg + '\n';
+      out.scrollTop = out.scrollHeight;
+    }
+
+    async function testPreflight() {
+      const runId = document.getElementById('runId').value.trim();
+      const url = `${GATEWAY}/v1/runs/${runId}/events`;
+      
+      document.getElementById('output').textContent = '';
+      log(`Testing OPTIONS preflight to: ${url}`);
+
+      try {
+        const res = await fetch(url, {
+          method: 'OPTIONS',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Origin': 'http://192.168.1.141:5173',
+            'Access-Control-Request-Method': 'GET',
+            'Access-Control-Request-Headers': 'authorization,accept'
+          }
+        });
+
+        log(`Status: ${res.status} ${res.statusText}`, res.ok ? 'success' : 'error');
+        
+        const headers = {};
+        res.headers.forEach((v, k) => headers[k] = v);
+        log('Response Headers:\n' + JSON.stringify(headers, null, 2));
+        
+        if (res.headers.get('access-control-allow-origin')) {
+          log('✅ Access-Control-Allow-Origin present', 'success');
+        } else {
+          log('❌ Missing Access-Control-Allow-Origin header!', 'error');
+        }
+      } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+        console.error(err);
+      }
+    }
+
+    async function testFetch() {
+      const runId = document.getElementById('runId').value.trim();
+      const url = `${GATEWAY}/v1/runs/${runId}/events`;
+      
+      document.getElementById('output').textContent = '';
+      log(`Testing GET + SSE to: ${url}`);
+
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Authorization': `Bearer ${AUTH}`,
+            'Accept': 'text/event-stream'
+          }
+        });
+
+        log(`Status: ${res.status} ${res.statusText}`, res.ok ? 'success' : 'error');
+
+        const headers = {};
+        res.headers.forEach((v, k) => headers[k] = v);
+        log('Response Headers:\n' + JSON.stringify(headers, null, 2));
+
+        const acao = res.headers.get('access-control-allow-origin');
+        if (acao) {
+          log(`✅ Access-Control-Allow-Origin: ${acao}`, 'success');
+        } else {
+          log('❌ Missing Access-Control-Allow-Origin header!', 'error');
+        }
+
+        if (!res.ok) {
+          const text = await res.text();
+          log(`Body: ${text}`);
+          return;
+        }
+
+        // Try to read SSE stream briefly
+        log('Attempting to read SSE stream for 3 seconds...');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const timeout = setTimeout(() => {
+          reader.cancel();
+          log('Stream read timeout (normal for dummy run ID)');
+        }, 3000);
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            if (buffer.length > 200) break;
+          }
+        } catch (e) {
+          log(`Stream error: ${e.message}`);
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        log('Stream test completed (see network tab for full details)');
+
+      } catch (err) {
+        log(`Fetch Error: ${err.message}`, 'error');
+        console.error(err);
+      }
+    }
+
+    // Auto-run on load for convenience
+    // window.onload = () => testFetch();
+  </script>
+</body>
+</html>

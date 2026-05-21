@@ -1,0 +1,42 @@
+
+# STAGE 1: Builder
+FROM lmsysorg/sglang:latest AS builder
+
+# Prepare build environment
+RUN apt-get update && apt-get install -y git build-essential
+
+# Install sglang from source to ensure custom kernels/registry are built
+RUN git clone https://github.com/sgl-project/sglang.git /tmp/sglang && \
+    pip install --no-cache-dir /tmp/sglang/python[all]
+
+# Install latest transformers from main branch (no-deps to avoid breaking sglang's pinned environment)
+RUN git clone https://github.com/huggingface/transformers.git /tmp/transformers && \
+    pip install --no-cache-dir --no-deps /tmp/transformers
+
+# STAGE 2: Final Runtime
+FROM lmsysorg/sglang:latest
+
+# Copy installed python packages from builder
+# We use the standard path for site-packages in most official images, 
+# but we'll be safe by copying the whole site-packages or ensuring we install in the final stage.
+# Actually, simpler: reinstall in the final stage using a multi-stage clone to keep the image lean.
+# Let's refine this to a single-stage heavy build since multi-stage python package copying is brittle 
+# across different base image distros unless we are very careful with paths.
+
+# REFINED STRATEGY: Single stage with aggressive cleanup to solve registry/module issues.
+RUN apt-get update && apt-get install -y git build-essential && \
+    git clone https://github.com/sgl-project/sglang.git /tmp/sglang && \
+    git clone https://github.com/huggingface/transformers.git /tmp/transformers && \
+    pip install --no-cache-dir /tmp/sglang/python[all] && \
+    pip install --no-cache-dir --no-deps /tmp/transformers && \
+    pip install --no-cache-dir openai httpx && \
+    rm -rf /tmp/sglang /tmp/transformers && \
+    apt-get purge -y git build-essential && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set PYTHONPATH to ensure the installed sglang is discoverable
+ENV PYTHONPATH="/usr/local/lib/python3.10/dist-packages:/usr/local/lib/python3.11/dist-packages:${PYTHONPATH}"
+
+# Verify installation during build
+RUN python3 -c "import sglang; print('SGLang module found'); import sglang.launch_server; print('SGLang launch_server found')"

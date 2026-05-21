@@ -1,0 +1,445 @@
+@import "tailwindcss";
+
+/* Font families defined here to avoid Tailwind auto-generating @import mid-CSS */
+@theme {
+  --color-hermes-bg: #0a0a0b;
+  --color-hermes-surface: #131315;
+  --color-hermes-elevated: #1a1a1d;
+  --color-hermes-border: #262626;
+  --color-hermes-border-light: #333333;
+  --color-hermes-accent: #6366f1;
+  --color-hermes-accent-hover: #818cf8;
+  --color-hermes-accent-subtle: rgba(99, 102, 241, 0.1);
+  --color-hermes-text: #e4e4e7;
+  --color-hermes-text-dim: #a1a1aa;
+  --color-hermes-text-muted: #71717a;
+  --color-hermes-success: #22c55e;
+  --color-hermes-warning: #f59e0b;
+  --color-hermes-error: #ef4444;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Base styles */
+@layer base {
+  body {
+    @apply bg-hermes-bg text-hermes-text antialiased;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+  }
+
+  * {
+    @apply border-hermes-border;
+  }
+
+  ::selection {
+    @apply bg-hermes-accent/30 text-hermes-text;
+  }
+}
+
+/* Component classes */
+@layer components {
+  .panel {
+    @apply bg-hermes-surface border border-hermes-border rounded-lg p-4;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .panel.no-resize {
+    @apply resize-none;
+  }
+
+  .panel-header {
+    @apply flex items-center gap-2 pb-3 mb-4 border-b border-hermes-border;
+    color: var(--color-hermes-text-dim);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .panel-header svg {
+    @apply w-4 h-4 text-hermes-accent;
+  }
+
+  .metric-card {
+    @apply bg-hermes-elevated border border-hermes-border rounded-md p-4;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .metric-card:hover {
+    @apply border-hermes-border-light;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .metric-value {
+    @apply text-3xl font-semibold text-hermes-text mt-1;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .metric-label {
+    @apply text-hermes-text-muted text-xs uppercase tracking-wider font-medium;
+  }
+
+  .log-entry {
+    @apply text-sm py-1 px-2 rounded;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    transition: background-color 0.15s ease;
+  }
+
+  .log-entry:hover {
+    @apply bg-hermes-elevated/50;
+  }
+
+  .tab {
+    @apply px-4 py-2 text-hermes-text-dim cursor-pointer rounded-md text-sm font-medium;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tab:hover {
+    @apply text-hermes-text bg-hermes-elevated;
+  }
+
+  .tab.active {
+    @apply text-hermes-accent bg-hermes-accent-subtle;
+  }
+
+  /* FloatingChat tabs */
+  .floating-tab {
+    @apply flex items-center gap-1.5 px-2.5 py-1 rounded-t-md text-xs font-medium;
+    @apply cursor-pointer transition-all duration-150;
+    @apply bg-hermes-elevated/50 text-hermes-text-muted border-x border-t border-hermes-border;
+  }
+
+  .floating-tab:hover {
+    @apply bg-hermes-elevated text-hermes-text border-hermes-border-light;
+  }
+
+  .floating-tab.active {
+    @apply text-hermes-accent bg-hermes-accent-subtle border-hermes-accent/30;
+  }
+
+  .floating-tab.new-tab {
+    @apply p-1 hover:bg-hermes-elevated rounded-t-md;
+  }
+
+  .delete-conv {
+    @apply ml-1 text-hermes-text-muted hover:text-hermes-error;
+    @apply cursor-pointer transition-colors duration-150;
+  }
+
+  /* FloatingChat main wrapper */
+  .floating-chat {
+    @apply fixed z-[9999] flex flex-col overflow-hidden;
+    @apply bg-[#141419]/98 rounded-xl border border-white/10;
+    @apply shadow-2xl shadow-black/40;
+  }
+
+  .floating-chat-header {
+    @apply flex items-center justify-between px-3.5 py-2.5 flex-shrink-0;
+    @apply bg-white/5 border-b border-white/8;
+    @apply cursor-grab active:cursor-grabbing select-none;
+  }
+
+  .floating-chat-header .drag-handle {
+    @apply w-2 h-2 rounded-full;
+    @apply transition-colors duration-300;
+  }
+
+  .floating-chat-header .drag-handle.streaming {
+    @apply bg-emerald-500;
+  }
+
+  .floating-chat-header .drag-handle.idle {
+    @apply bg-neutral-500;
+  }
+
+  .floating-chat-header .streaming-badge {
+    @apply text-[10px] font-medium text-emerald-400;
+    animation: stream-pulse 1.5s infinite ease-in-out;
+  }
+
+  @keyframes stream-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .floating-chat-header .title {
+    @apply text-xs font-semibold text-white;
+  }
+
+  .floating-chat-header .msg-count {
+    @apply text-[10px] text-neutral-500;
+  }
+
+  .floating-chat-header .btn {
+    @apply flex items-center justify-center px-2 py-0.5 rounded;
+    @apply text-[11px] text-neutral-400 bg-white/5 hover:bg-white/10;
+    @apply cursor-pointer transition-colors duration-150;
+  }
+
+  .floating-chat-header .btn.active {
+    @apply bg-indigo-500/30 text-indigo-400;
+  }
+
+  .floating-chat-tabs {
+    @apply flex items-end px-2 py-1.5 gap-1 flex-shrink-0 overflow-x-auto;
+  }
+
+  .floating-chat-tabs::-webkit-scrollbar {
+    @apply h-1;
+  }
+
+  .floating-chat-tabs::-webkit-scrollbar-thumb {
+    @apply bg-hermes-border/50 rounded;
+  }
+
+  .floating-chat-messages {
+    @apply flex-1 overflow-hidden flex flex-col min-h-0;
+  }
+
+  .floating-chat-composer {
+    @apply px-3 py-2 border-t border-white/8 flex-shrink-0;
+  }
+
+  .floating-chat-resize {
+    @apply absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize;
+  }
+
+  .floating-chat-restore {
+    @apply fixed right-4 bottom-4 z-[10000] flex items-center gap-1.5 px-2.5 py-1.5;
+    @apply bg-[#141419]/95 rounded-lg border border-white/15;
+    @apply shadow-xl shadow-black/30 cursor-pointer;
+  }
+
+  /* === DIAGNOSTICS BAR (Harness Observability) === */
+  .floating-diagnostics-bar {
+    @apply flex items-center justify-between px-3 py-1 flex-shrink-0;
+    @apply bg-[#0a0a0c] border-b border-white/10;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  .floating-diagnostics-bar .diag-left {
+    @apply flex items-center gap-2;
+  }
+
+  .floating-diagnostics-bar .diag-label {
+    @apply text-[9px] font-medium tracking-[1px] text-white/40;
+  }
+
+  .floating-diagnostics-bar .diag-status-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-white/20 transition-colors;
+  }
+
+  .floating-diagnostics-bar .diag-status-dot.active {
+    @apply bg-emerald-400 shadow-[0_0_4px_rgb(52,211,153)];
+  }
+
+  .floating-diagnostics-bar .diag-mode {
+    @apply text-emerald-400 text-[10px] font-medium;
+  }
+
+  .floating-diagnostics-bar .diag-center {
+    @apply flex items-center gap-4;
+  }
+
+  .floating-diagnostics-bar .diag-stat {
+    @apply flex items-center gap-1 text-white/60;
+  }
+
+  .floating-diagnostics-bar .stat-label {
+    @apply text-[9px] text-white/30;
+  }
+
+  .floating-diagnostics-bar .stat-value {
+    @apply text-white/90 font-medium max-w-[140px] truncate;
+  }
+
+  .floating-diagnostics-bar .diag-right {
+    @apply flex items-center;
+  }
+
+  .floating-diagnostics-bar .diag-delta {
+    @apply px-2 py-0.5 rounded bg-white/5 text-amber-400 text-[10px] font-mono;
+  }
+
+  .floating-diagnostics-bar .diag-live {
+    @apply ml-2 px-1.5 py-0.5 text-[9px] rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-medium tracking-wider;
+  }
+
+  .floating-diagnostics-bar .diag-live-status {
+    @apply px-2 py-0.5 rounded text-[10px] font-bold tracking-widest;
+    background: linear-gradient(90deg, #22c55e22, #eab30822);
+    color: #eab308;
+    border: 1px solid #eab30833;
+  }
+
+  .floating-diagnostics-bar .diag-thinking {
+    @apply px-2 py-0.5 rounded text-[11px] font-medium text-amber-400;
+    animation: thinking-pulse 1.4s infinite ease-in-out;
+  }
+
+  @keyframes thinking-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .floating-diagnostics-bar .diag-btn {
+    @apply ml-2 px-2 py-0.5 text-[9px] rounded border border-white/15 text-white/60 hover:text-white hover:border-white/30 transition-all;
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  /* === COLLAPSIBLE DEBUG LOG === */
+  .floating-debug-log {
+    @apply border-t border-white/10 bg-[#0a0a0c] flex-shrink-0;
+    max-height: 140px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .floating-debug-log .debug-log-header {
+    @apply flex items-center justify-between px-3 py-1 text-[10px] text-white/40 border-b border-white/8 flex-shrink-0;
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .floating-debug-log .debug-count {
+    @apply text-emerald-400/60;
+  }
+
+  .floating-debug-log .debug-log-content {
+    @apply flex-1 overflow-y-auto text-[10px] px-3 py-1 font-mono;
+  }
+
+  .floating-debug-log .debug-event {
+    @apply flex gap-2 py-0.5 text-white/70 border-b border-white/5 last:border-none;
+  }
+
+  .floating-debug-log .event-time {
+    @apply text-white/30 w-6 flex-shrink-0;
+  }
+
+  .floating-debug-log .event-type {
+    @apply text-cyan-400 w-28 flex-shrink-0;
+  }
+
+  .floating-debug-log .event-content {
+    @apply text-white/50 truncate flex-1;
+  }
+
+  .floating-debug-log .debug-empty {
+    @apply text-white/30 italic py-2;
+  }
+
+  /* === Message thinking state (empty streaming assistant) === */
+  .mc-thinking {
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg;
+    @apply bg-white/5 border border-white/10 text-sm;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  .mc-thinking-icon {
+    @apply text-base opacity-70;
+  }
+
+  .mc-thinking-text {
+    @apply text-white/80 font-medium;
+  }
+
+  .mc-thinking-dots {
+    @apply flex gap-0.5 text-emerald-400 font-bold text-lg leading-none;
+  }
+
+  .mc-thinking-dots .dot {
+    animation: thinking-dot-blink 1.1s infinite ease-in-out;
+    opacity: 0.3;
+  }
+
+  .mc-thinking-dots .dot-1 { animation-delay: 0s; }
+  .mc-thinking-dots .dot-2 { animation-delay: 0.25s; }
+  .mc-thinking-dots .dot-3 { animation-delay: 0.5s; }
+
+  @keyframes thinking-dot-blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .mc-thinking-cursor {
+    @apply text-emerald-400 ml-0.5;
+    animation: cursor-blink 1s step-end infinite;
+    font-weight: 400;
+  }
+
+  @keyframes cursor-blink {
+    50% { opacity: 0; }
+  }
+
+  .floating-chat-restore .status-dot {
+    @apply w-1.5 h-1.5 rounded-full;
+  }
+
+  .floating-chat-restore .status-dot.streaming {
+    @apply bg-emerald-500;
+    animation: stream-pulse 1.5s infinite ease-in-out;
+  }
+
+  .floating-chat-restore .status-dot.idle {
+    @apply bg-neutral-500;
+  }
+
+  .floating-chat-restore .restore-text {
+    @apply text-xs text-neutral-300 font-medium;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full bg-hermes-success;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  }
+
+  .status-dot.connected {
+    @apply bg-hermes-success;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  }
+
+  .status-dot.error {
+    @apply bg-hermes-error animate-none;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  }
+
+  .ssh-input {
+    @apply bg-hermes-elevated border border-hermes-border rounded px-3 py-1.5 text-sm text-hermes-text w-full;
+    @apply focus:outline-none focus:border-hermes-accent;
+    font-family: inherit;
+  }
+
+  .ssh-connect-btn {
+    @apply px-4 py-1.5 text-sm font-medium rounded transition-all;
+    @apply border border-hermes-success text-hermes-success;
+    @apply hover:bg-hermes-success/10;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-hermes-border rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-hermes-border-light;
+  }
+}
