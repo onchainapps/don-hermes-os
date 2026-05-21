@@ -6,7 +6,7 @@
  *
  * Sections:
  *   1. Welcome & Overview  — what Don Hermes OS is
- *   2. Chat               — ModalChat, slash cmds, voice input
+ *   2. Chat               — ProfileChat, slash cmds, voice input
  *   3. Sidebar Tabs       — SYSTEM, SESSIONS, WIKI, PROFILES, CRON
  *   4. Backend & profiles  — what the backend is, how profiles work
  */
@@ -42,7 +42,7 @@ const STEPS: StepDef[] = [
     num: 2,
     title: 'Chat — Your AI Terminal',
     icon: '💬',
-    body: `The floating ModalChat (bottom-right by default) is your direct line to the active Hermes Agent. Type anything, stream responses, and use slash commands for agentic actions.`,
+    body: `The floating ProfileChat (bottom-right by default) is your direct line to the active Hermes Agent. Type anything, stream responses, and use slash commands for agentic actions.`,
     features: [
       '<b>Ctrl/Cmd+B</b> — voice input toggle',
       '<b>/help</b> — list all slash commands',
