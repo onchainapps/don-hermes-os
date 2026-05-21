@@ -9,12 +9,11 @@ import GitPanel from './components/GitPanel';
 import ResizableSplitter from './components/ResizableSplitter';
 import Sidebar, { type AppId } from './components/Sidebar';
 import StatusBar from './components/StatusBar';
-import CronPanel from './components/CronPanel';
 import SessionPanel from './components/SessionPanel';
 import SystemPanel from './components/SystemPanel';
-import HermesPanel from './components/HermesPanel';
+import CronPanel from './components/CronPanel';
 import ProfileManager from './components/ProfileManager';
-import ModalChat from './components/ModalChat';
+//import ModalChat from './components/ModalChat';
 import ProfileChat from './components/ProfileChat';
 const WikiPanel = lazy(() => import('./components/WikiPanel'));
 
@@ -35,18 +34,14 @@ interface Project {
 export default function App() {
   const [stats, setStats] = createSignal<SystemStats | null>(null);
   const savedApp = localStorage.getItem('don-last-app') as AppId | null;
-  const [activeApp, setActiveAppRaw] = createSignal<AppId>(savedApp && savedApp !== 'CHAT' ? savedApp : 'SYSTEM');
+  const [activeApp, setActiveAppRaw] = createSignal<AppId>(savedApp || 'SYSTEM');
   const setActiveApp = (app: AppId) => {
     setActiveAppRaw(app);
     localStorage.setItem('don-last-app', app);
   };
 
-  // Remap CHAT sidebar click -> toggle modal chat
+  // Remap sidebar clicks
   const handleAppSelect = (app: AppId) => {
-    if (app === 'CHAT') {
-      window.dispatchEvent(new CustomEvent('floating-chat-toggle'));
-      return;
-    }
     setActiveApp(app);
   };
   const [gatewayOnline, setGatewayOnline] = createSignal(false);
@@ -67,6 +62,7 @@ export default function App() {
   }>>([]);
 
   const [unreadProfiles, setUnreadProfiles] = createSignal<Set<string>>(new Set());
+  const [cronPanelProfile, setCronPanelProfile] = createSignal<string | null>(null);
 
   const openProfileChat = (profileName: string, gatewayPort?: number, apiKey?: string) => {
     const profileId = profileName.toLowerCase();
@@ -177,12 +173,22 @@ export default function App() {
     };
     window.addEventListener('profile-chat-close', handleCloseProfileChat);
 
+    // Listen for profile cron requests (opens as overlay)
+    const handleOpenProfileCron = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.profileName) {
+        setCronPanelProfile(detail.profileName);
+      }
+    };
+    window.addEventListener('open-profile-cron', handleOpenProfileCron);
+
     onCleanup(() => {
       clearInterval(statsInterval);
       clearInterval(gwInterval);
       window.removeEventListener('editor-context', handleEditorContext);
       window.removeEventListener('open-profile-chat', handleOpenProfileChat);
       window.removeEventListener('profile-chat-close', handleCloseProfileChat);
+      window.removeEventListener('open-profile-cron', handleOpenProfileCron);
       window.removeEventListener('keydown', handleKeydown);
     });
 
@@ -195,15 +201,11 @@ export default function App() {
     // Keyboard shortcuts: Ctrl+1-8, Ctrl+Shift+D (floating chat)
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        const apps: AppId[] = ['SYSTEM', 'CODE', 'SYSTEM', 'CRON', 'SESSIONS', 'WIKI', 'HERMES', 'PROFILES'];
+        const apps: AppId[] = ['SYSTEM', 'CODE', 'SESSIONS', 'WIKI', 'PROFILES'];
         const num = parseInt(e.key);
-        if (num >= 1 && num <= 8) {
+        if (num >= 1 && num <= 5) {
           e.preventDefault();
-          if (num === 1) {
-            window.dispatchEvent(new CustomEvent('floating-chat-toggle'));
-          } else {
-            setActiveApp(apps[num - 1]);
-          }
+          setActiveApp(apps[num - 1]);
         }
       }
     };
@@ -375,14 +377,6 @@ export default function App() {
               <SystemPanel stats={stats()} gatewayOnline={gatewayOnline()} />
             </div>
 
-            {/* CRON */}
-            <div
-              class="absolute inset-0 overflow-hidden"
-              style={{ display: activeApp() === 'CRON' ? 'block' : 'none' }}
-            >
-              <CronPanel />
-            </div>
-
             {/* SESSIONS */}
             <div
               class="absolute inset-0 overflow-hidden"
@@ -399,14 +393,6 @@ export default function App() {
                 <WikiPanel />
               </div>
             </Show>
-
-            {/* HERMES */}
-            <div
-              class="absolute inset-0 overflow-hidden"
-              style={{ display: activeApp() === 'HERMES' ? 'block' : 'none' }}
-            >
-              <HermesPanel />
-            </div>
 
             {/* PROFILES */}
             <div
@@ -426,21 +412,37 @@ export default function App() {
         gatewayOnline={gatewayOnline()}
         sessionId={sessionId()}
       />
+
+      {/* ProfileChat instances - rendered inside main layout with fixed position */}
+      <Index each={openProfileChats()}>
+        {(chat) => (
+          <ProfileChat
+            profileId={chat().id}
+            profileName={chat().name}
+            gatewayPort={chat().gatewayPort}
+            apiKey={chat().apiKey}
+          />
+        )}
+      </Index>
+
+      {/* Cron panel overlay - shown when triggered from profile */}
+      <Show when={cronPanelProfile()}>
+        <div
+          class="fixed inset-0 z-[99999] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setCronPanelProfile(null)}
+        >
+          <div
+            class="w-[900px] max-h-[85vh] rounded-xl overflow-hidden"
+            style={{ background: '#050507', border: '1px solid rgba(0,243,255,0.2)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CronPanel profile={cronPanelProfile()} />
+          </div>
+        </div>
+      </Show>
     </div>
 
-    {/* Floating chat - moved outside main layout so it can't get trapped in footer */}
-    <ModalChat />
-    {/* Multiple independent ProfileChat instances (standalone, per-profile state) */}
-    <Index each={openProfileChats()}>
-      {(chat) => (
-        <ProfileChat
-          profileId={chat().id}
-          profileName={chat().name}
-          gatewayPort={chat().gatewayPort}
-          apiKey={chat().apiKey}
-        />
-      )}
-    </Index>
     </>
   );
 }

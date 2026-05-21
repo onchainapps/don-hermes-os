@@ -29,6 +29,11 @@ export default function ProfileManager() {
   const [expandedName, setExpandedName] = createSignal<string | null>(null);
   const [activeTab, setActiveTab] = createSignal<'overview' | 'controls' | 'skills'>('overview');
   const [fetchingProfile, setFetchingProfile] = createSignal<string | null>(null);
+
+  const [configProfile, setConfigProfile] = createSignal<string | null>(null);
+  const [configYaml, setConfigYaml] = createSignal('');
+  const [configLoading, setConfigLoading] = createSignal(false);
+  const [configStatus, setConfigStatus] = createSignal<string | null>(null);
   
   const [newName, setNewName] = createSignal('');
   const [newDescription, setNewDescription] = createSignal('');
@@ -120,6 +125,42 @@ export default function ProfileManager() {
       alert(`Error deleting profile: ${e.message}`);
     }
   };
+
+  // ── Config modal ──
+  const loadConfig = async (name: string) => {
+    setConfigLoading(true);
+    setConfigStatus(null);
+    try {
+      const data = await hermesGet<{ yaml: string }>(`/profiles/config/raw?name=${encodeURIComponent(name)}`);
+      setConfigYaml(data.yaml || '');
+    } catch (e: any) {
+      setConfigStatus(`Failed to load: ${e.message}`);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const saveConfig = async () => {
+    const name = configProfile();
+    if (!name) return;
+    setConfigStatus('Saving...');
+    try {
+      await fetch(`/api/hermes/profiles/config/raw?name=${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yaml_text: configYaml() }),
+      });
+      setConfigStatus('Saved ✓');
+      setTimeout(() => setConfigStatus(null), 2000);
+    } catch (e: any) {
+      setConfigStatus(`Error: ${e.message}`);
+    }
+  };
+
+  createEffect(() => {
+    const name = configProfile();
+    if (name) loadConfig(name);
+  });
 
   const statusColor = (status: string) => {
     if (status === 'active') return '#00ff9f';
@@ -311,6 +352,28 @@ export default function ProfileManager() {
                           >
                             PROFILE CHAT
                           </button>
+                          {/* Cron Jobs - per profile */}
+                          <button
+                            class="px-3 py-1 text-[10px] font-bold tracking-wider transition-colors border-b-2 border-transparent text-hermes-cyan hover:text-hermes-cyan cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.dispatchEvent(new CustomEvent('open-profile-cron', {
+                                detail: { profileName: profile.name }
+                              }));
+                            }}
+                          >
+                            CRON
+                          </button>
+                          {/* Config - per profile modal */}
+                          <button
+                            class="px-3 py-1 text-[10px] font-bold tracking-wider transition-colors border-b-2 border-transparent text-hermes-cyan hover:text-hermes-cyan cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfigProfile(profile.name);
+                            }}
+                          >
+                            CONFIG
+                          </button>
                         </div>
                       </div>
 
@@ -424,6 +487,83 @@ export default function ProfileManager() {
               );
             }}
           </For>
+        </div>
+      </Show>
+
+      {/* Config Modal */}
+      <Show when={configProfile()}>
+        <div
+          class="fixed inset-0 z-[99999] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setConfigProfile(null)}
+        >
+          <div
+            class="w-[700px] max-h-[80vh] flex flex-col rounded-xl overflow-hidden"
+            style={{ background: '#0a0a0f', border: '1px solid rgba(0,243,255,0.2)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div class="flex items-center justify-between px-4 py-3 border-b border-hermes-cyan/20">
+              <div class="flex items-center gap-3">
+                <span class="text-lg">⚙️</span>
+                <span class="text-xs font-bold tracking-wider" style={{ color: '#00f3ff' }}>
+                  CONFIG — {configProfile()}
+                </span>
+              </div>
+              <button
+                onClick={() => setConfigProfile(null)}
+                class="px-2 py-1 text-[10px] border border-zinc-700 rounded hover:bg-zinc-800 text-zinc-400"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Editor */}
+            <div class="flex-1 overflow-auto p-4">
+              <Show when={configLoading()} fallback={
+                <textarea
+                  class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
+                  style={{ color: '#e4e4e7' }}
+                  value={configYaml()}
+                  onInput={(e) => setConfigYaml(e.currentTarget.value)}
+                />
+              }>
+                <div class="flex items-center justify-center py-12">
+                  <div class="text-hermes-cyan text-[10px] font-mono animate-pulse">LOADING...</div>
+                </div>
+              </Show>
+            </div>
+
+            {/* Footer */}
+            <div class="flex items-center justify-between px-4 py-3 border-t border-hermes-cyan/20">
+              <Show when={configStatus()}>
+                <span class="text-[10px] font-mono" style={{
+                  color: configStatus()?.includes('Error') ? '#ff006e' : configStatus() === 'Saved ✓' ? '#00ff9f' : '#00f3ff'
+                }}>
+                  {configStatus()}
+                </span>
+              </Show>
+              <div class="flex gap-2 ml-auto">
+                <button
+                  onClick={() => setConfigProfile(null)}
+                  class="px-4 py-1.5 text-[10px] border border-zinc-700 rounded hover:bg-zinc-800 text-zinc-400"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={saveConfig}
+                  class="px-4 py-1.5 text-[10px] rounded font-bold"
+                  style={{
+                    background: 'rgba(0,255,159,0.1)',
+                    border: '1px solid rgba(0,255,159,0.3)',
+                    color: '#00ff9f',
+                  }}
+                >
+                  SAVE
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </Show>
 

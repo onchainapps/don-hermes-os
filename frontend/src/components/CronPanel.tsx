@@ -14,7 +14,19 @@ interface CronJob {
   next_run?: string;
 }
 
-export default function CronPanel() {
+interface CronPanelProps {
+  profile?: string;
+}
+
+export default function CronPanel(props: CronPanelProps) {
+  // Route through gateway proxy when a profile is set (per-profile cron jobs)
+  const cronUrl = (path: string) => props.profile ? `/gp/api/jobs${path}` : `/api/jobs${path}`;
+  const cronHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (props.profile) h['X-Hermes-Profile'] = props.profile;
+    return h;
+  };
+
   const [jobs, setJobs] = createSignal<CronJob[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [selectedJob, setSelectedJob] = createSignal<string | null>(null);
@@ -29,7 +41,7 @@ export default function CronPanel() {
 
   const fetchJobs = () => {
     setLoading(true);
-    fetch(apiUrl('/api/jobs'))
+    fetch(cronUrl(''), { headers: cronHeaders() })
       .then(r => r.json())
       .then(data => {
         setJobs(data.jobs || []);
@@ -59,12 +71,16 @@ export default function CronPanel() {
 
   const createJob = () => {
     if (!newName() || !newSchedule() || !newPrompt()) return;
-    action('/api/jobs', 'POST', {
-      name: newName(),
-      schedule: newSchedule(),
-      prompt: newPrompt(),
-      deliver: newDeliver(),
-    });
+    fetch(cronUrl(''), {
+      method: 'POST',
+      headers: cronHeaders(),
+      body: JSON.stringify({
+        name: newName(),
+        schedule: newSchedule(),
+        prompt: newPrompt(),
+        deliver: newDeliver(),
+      }),
+    })
     setNewName('');
     setNewSchedule('');
     setNewPrompt('');
@@ -72,7 +88,12 @@ export default function CronPanel() {
   };
 
   const deleteJob = (id: string) => {
-    action(`/api/jobs/${id}`, 'DELETE');
+    fetch(cronUrl(`/${id}`), {
+      method: 'DELETE',
+      headers: cronHeaders(),
+    })
+      .then(r => r.json())
+      .then(() => setTimeout(fetchJobs, 500));
   };
 
   return (
@@ -84,6 +105,15 @@ export default function CronPanel() {
           <span class="text-[10px] font-bold tracking-wider" style={{ color: '#00f3ff' }}>
             CRON JOBS
           </span>
+          <Show when={props.profile}>
+            <span class="text-[9px] font-mono px-1.5 py-0.5 rounded ml-2" style={{
+              background: 'rgba(0,243,255,0.1)',
+              border: '1px solid rgba(0,243,255,0.3)',
+              color: '#00f3ff',
+            }}>
+              {props.profile}
+            </span>
+          </Show>
           <button
             class="px-2 py-1 text-[10px] rounded cursor-pointer transition-all"
             style={{

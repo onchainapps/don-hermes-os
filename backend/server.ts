@@ -839,6 +839,37 @@ async function handleRequest(req: Request): Response {
         }
         return jsonErr(500, "Internal error");
       }
+
+      // Profile config raw YAML
+      if (pathname === '/api/hermes/profiles/config/raw' && method === 'GET') {
+        try {
+          const name = url.searchParams.get('name');
+          if (!name) { return jsonErr(400, 'Name required'); return; }
+          const configPath = join(HERMES_HOME, 'profiles', name, 'config.yaml');
+          const yaml = existsSync(configPath) ? readFileSync(configPath, 'utf-8') : '# No config yet';
+          return jsonOk({ yaml });
+        } catch (e: any) {
+          return jsonErr(500, e.message);
+        }
+        return jsonErr(500, "Internal error");
+      }
+
+      if (pathname === '/api/hermes/profiles/config/raw' && method === 'PUT') {
+        try {
+          const name = url.searchParams.get('name');
+          if (!name) { return jsonErr(400, 'Name required'); return; }
+          const body = JSON.parse(await req.text());
+          if (!body.yaml_text) throw new Error('yaml_text required');
+          const configPath = join(HERMES_HOME, 'profiles', name, 'config.yaml');
+          // Validate YAML before writing
+          YAML.parse(body.yaml_text);
+          writeFileSync(configPath, body.yaml_text);
+          return jsonOk({ ok: true });
+        } catch (e: any) {
+          return jsonErr(500, e.message || 'Invalid YAML');
+        }
+        return jsonErr(500, "Internal error");
+      }
     }
 
     // Env Management
