@@ -624,15 +624,67 @@ async function handleRequest(req: Request): Response {
               } else {
                 envContent += `\nAPI_SERVER_PORT=${newPort}`;
               }
+              // Regenerate CORS_ORIGINS with auto-detected IP
+              let localIp = '127.0.0.1';
+              try {
+                const ipResult = execSync('hostname -I', { timeout: 2000, encoding: 'utf-8' });
+                const ips = ipResult.trim().split(/\s+/).filter(ip => ip.includes('.'));
+                if (ips.length > 0) localIp = ips[0];
+              } catch (_) {}
+              const corsOrigins = [
+                `http://${localIp}:5173`,
+                `http://${localIp}:3101`,
+                'http://localhost:5173',
+                'http://localhost:3101',
+                'http://127.0.0.1:5173',
+                'http://127.0.0.1:3101',
+              ].join(',');
+              if (envContent.includes('API_SERVER_CORS_ORIGINS=')) {
+                envContent = envContent.replace(/API_SERVER_CORS_ORIGINS=.*/g, `API_SERVER_CORS_ORIGINS=${corsOrigins}`);
+              }
               writeFileSync(newEnvPath, envContent);
             } else {
               // No template: generate fresh .env with defaults
+              // Auto-detect local IP for CORS origins
+              let localIp = '127.0.0.1';
+              try {
+                const ipResult = execSync('hostname -I', { timeout: 2000, encoding: 'utf-8' });
+                const ips = ipResult.trim().split(/\s+/).filter(ip => ip.includes('.'));
+                if (ips.length > 0) localIp = ips[0];
+              } catch (_) {}
+
+              const corsOrigins = [
+                `http://${localIp}:5173`,
+                `http://${localIp}:3101`,
+                'http://localhost:5173',
+                'http://localhost:3101',
+                'http://127.0.0.1:5173',
+                'http://127.0.0.1:3101',
+              ].join(',');
+
               writeFileSync(newEnvPath, [
-                `API_SERVER_KEY=${newApiKey}`,
+                '#API SERVER SETTINGS',
+                'API_SERVER_ENABLED=true',
+                'API_SERVER_HOST=0.0.0.0',
                 `API_SERVER_PORT=${newPort}`,
-                'GATEWAY_AUTH=',
+                `API_SERVER_KEY=${newApiKey}`,
+                `API_SERVER_CORS_ORIGINS=${corsOrigins}`,
+                'API_SERVER_CORS_ALLOW_HEADERS=*',
+                'API_SERVER_CORS_ALLOWED_HEADERS=*',
+                'API_SERVER_CORS_EXPOSE_HEADERS=*',
+                '',
+                '# COMMON SETTINGS',
+                'LLM_MODEL=',
+                'DEFAULT_MODEL=',
+                'TERMINAL_TIMEOUT=60',
+                'TERMINAL_LIFETIME_SECONDS=300',
+                'BROWSER_SESSION_TIMEOUT=300',
+                'BROWSER_INACTIVITY_TIMEOUT=120',
+                '',
+                '# GATEWAY',
                 'GATEWAY_HOST=127.0.0.1',
                 'GATEWAY_PORT=8642',
+                'GATEWAY_AUTH=',
               ].join('\n') + '\n');
             }
             if (description) {
