@@ -8,6 +8,10 @@
     "dev:backend": "cd backend && bun run dev",
     "dev": "bun run dev:backend & bun run dev:frontend",
     "build": "cd frontend && bun run build",
-    "start": "cd backend && bun run server.ts"
+    "start": "cd backend && bun run server.ts",
+    "setup": "node scripts/setup.mjs",
+    "setup:ci": "node scripts/setup.mjs --ci",
+    "package:frontend": "cd frontend && npm pack",
+    "package:backend": "cd backend && npm pack"
   }
 }
