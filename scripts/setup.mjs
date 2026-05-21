@@ -267,6 +267,19 @@ async function main() {
   }
   log('   ', `  Open http://${corsIp}:5173 in your browser`);
   console.log();
+
+  // Wiki knowledge base (optional)
+  log('📚', 'Optional — Wiki knowledge base:', 'dim');
+  log('   ', '  The WikiPanel tab shows a knowledge graph built from your agent sessions.');
+  log('   ', '  It requires the wiki-autopilot + wiki-transcript-ingest Hermes skills.');
+  log('   ', '  To set it up:');
+  log('   ', '    skill_view(name="wiki-autopilot")        # read the skill');
+  log('   ', '    skill_view(name="wiki-transcript-ingest") # read the skill');
+  log('   ', '    mkdir -p ~/wiki/{entities,concepts,decisions,lessons,milestones,comparisons,queries,reflections,raw/transcripts}');
+  log('   ', '    cronjob schedule="0 5 * * *" prompt="Run the wiki-autopilot pipeline:');
+  log('   ', '       export transcripts, score, extract, file, check index,');
+  log('   ', '       audit tags, regenerate dashboard JSON."');
+  console.log();
 }
 
 main().catch(err => {
