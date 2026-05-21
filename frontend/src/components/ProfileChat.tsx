@@ -9,7 +9,7 @@
 
 import { createSignal, createEffect, onMount, onCleanup, For, Show, Index } from 'solid-js';
 import { Portal } from 'solid-js/web';
-import MessageContent from '../lib/chat-ui/components/MessageContent';
+import MessageContent from '../components/MessageContent';
 
 interface ProfileChatProps {
   profileId: string;
