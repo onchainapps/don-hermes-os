@@ -331,7 +331,17 @@ function jsonErr(status: number, message: string): Response {
 
 async function handleRequest(req: Request): Response {
   const url = new URL(req.url);
-  if (req.method === 'OPTIONS') return new Response(null, { status: 200 });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': '*',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
 
   const pathname = url.pathname;
   const method = req.method;
@@ -1480,16 +1490,19 @@ async function handleGatewayProxy(req: Request, pathname: string): Promise<Respo
     });
 
     // For streaming endpoints (SSE), preserve the response body as-is
+    const corsHeaders = new Headers(proxyRes.headers);
+    corsHeaders.set('Access-Control-Allow-Origin', '*');
+    corsHeaders.set('Access-Control-Allow-Headers', '*');
     return new Response(proxyRes.body, {
       status: proxyRes.status,
       statusText: proxyRes.statusText,
-      headers: proxyRes.headers,
+      headers: corsHeaders,
     });
   } catch (e: any) {
     console.error(`[gateway-proxy] Error proxying to ${targetUrl}:`, e.message);
     return new Response(JSON.stringify({ error: `Gateway proxy error: ${e.message}` }), {
       status: 502,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
 }
