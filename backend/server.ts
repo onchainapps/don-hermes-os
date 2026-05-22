@@ -474,7 +474,7 @@ async function handleRequest(req: Request): Response {
         try {
           // Parse `hermes gateway list` output for accurate status
           const hermesBin = `${process.env.HOME || '/home/don'}/.hermes/hermes-agent/venv/bin/hermes`;
-          const output = execSync(hermesBin, ['gateway', 'list'], {
+          const output = execSync(`${hermesBin} gateway list`, {
             timeout: 10000,
             encoding: 'utf-8',
           });
