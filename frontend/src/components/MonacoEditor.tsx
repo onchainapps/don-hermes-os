@@ -1,6 +1,7 @@
 import { apiUrl } from '../lib/api-base';
 import { gatewayChatUrl, gatewayHeaders } from '../lib/gateway';
-import { onMount, onCleanup, createSignal, createEffect, Show } from 'solid-js';
+import { hermesGet } from '../lib/hermesApi';
+import { onMount, onCleanup, createSignal, createEffect, Show, For } from 'solid-js';
 import * as monaco from 'monaco-editor';
 import ContextMenu, { type ContextMenuItem } from './ContextMenu';
 import CommandPalette, { type Command } from './CommandPalette';
@@ -342,6 +343,17 @@ export default function MonacoEditor(props: MonacoEditorProps) {
   const [diffData, setDiffData] = createSignal<{original: string, modified: string, filePath: string} | null>(null);
   const [inlineEdit, setInlineEdit] = createSignal<{proposedCode: string, selection: any} | null>(null);
 
+  // Profile selector for gateway requests
+  const [activeProfile, setActiveProfile] = createSignal<string>('');
+  const [availableProfiles, setAvailableProfiles] = createSignal<{name:string}[]>([]);
+
+  onMount(async () => {
+    try {
+      const data = await hermesGet<{profiles: {name:string,status:string}[]}>('/profiles');
+      setAvailableProfiles([{name:''}, ...data.profiles.map(p => ({name:p.name}))]);
+    } catch { /* backend not available, leave empty */ }
+  });
+
   /** Restore models from session or defaults. Returns [models, restoredActiveTab] */
   const initModels = (): { models: FileTab[]; restoredActiveTab: string } => {
     // Try to restore from session
@@ -524,9 +536,10 @@ export default function MonacoEditor(props: MonacoEditorProps) {
 
   // Perform non-streaming chat request
   const chatRequest = async (prompt: string): Promise<string> => {
-    const res = await fetch(gatewayChatUrl(), {
+    const profile = activeProfile();
+    const res = await fetch(gatewayChatUrl(profile || undefined), {
       method: 'POST',
-      headers: gatewayHeaders(),
+      headers: gatewayHeaders(profile || undefined),
       body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], stream: false }),
     });
     if (!res.ok) throw new Error('Chat request failed');
@@ -1062,6 +1075,20 @@ ${selInfo.code}
         >
           +
         </button>
+
+        {/* Profile selector for gateway requests */}
+        <select
+          value={activeProfile()}
+          onChange={(e) => setActiveProfile((e.target as HTMLSelectElement).value)}
+          class="ml-auto px-2 py-1 text-[10px] bg-hermes-bg border border-hermes-cyan/20 text-hermes-cyan rounded hover:border-hermes-cyan/50 cursor-pointer outline-none"
+          title="Select profile for Diff Preview / Edit Selection requests"
+        >
+          <For each={availableProfiles()}>
+            {(p) => (
+              <option value={p.name}>{p.name || 'Default'}</option>
+            )}
+          </For>
+        </select>
       </div>
 
       {/* Editor container */}

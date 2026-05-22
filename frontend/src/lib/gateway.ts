@@ -1,20 +1,18 @@
 /**
- * Hermes Gateway client — proxied through backend API.
- * Uses /api/gateway prefix so it works when accessing dashboard remotely.
+ * Hermes Gateway client — proxied through backend /gp (profile-aware).
+ * No import.meta.env dependencies (ModalChat antipode fixed).
+ * Uses /gp/v1/chat/completions which routes through the profile-aware proxy.
  */
 
-const GATEWAY_URL = '/api/gateway';
-const GATEWAY_AUTH = import.meta.env.VITE_GATEWAY_AUTH || '';
-
-export function gatewayChatUrl(): string {
-  return `${GATEWAY_URL}/v1/chat/completions`;
+export function gatewayChatUrl(profileName?: string): string {
+  return `/gp/v1/chat/completions`;
 }
 
-export function gatewayHeaders(sessionId?: string): Record<string, string> {
+export function gatewayHeaders(profileName?: string, sessionId?: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  if (GATEWAY_AUTH) headers['Authorization'] = `Bearer ${GATEWAY_AUTH}`;
+  if (profileName) headers['X-Hermes-Profile'] = profileName;
   if (sessionId) headers['X-Hermes-Session-Id'] = sessionId;
   return headers;
 }
