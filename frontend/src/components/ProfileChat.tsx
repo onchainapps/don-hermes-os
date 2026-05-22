@@ -10,6 +10,7 @@
 import { createSignal, createEffect, onMount, onCleanup, For, Show, Index } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import MessageContent from '../components/MessageContent';
+import { apiUrl } from '../lib/api-base';
 
 interface ProfileChatProps {
   profileId: string;
@@ -99,7 +100,7 @@ const SLASH_COMMANDS = [
 
 export default function ProfileChat(props: ProfileChatProps) {
   // Route through the backend gateway proxy — auth handled server-side
-  const apiBase = '/gp';
+  const apiBase = apiUrl('/gp');
 
   const [isOpen, setIsOpen] = createSignal(true);
   const [messages, setMessages] = createSignal<Message[]>([

@@ -1,13 +1,15 @@
+import { apiUrl } from './api-base';
+
 const BASE = '/api/hermes';
 
 export async function hermesGet<T = any>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(apiUrl(`${BASE}${path}`));
   if (!res.ok) throw new Error(`Hermes API ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
 export async function hermesPut<T = any>(path: string, body: any): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(apiUrl(`${BASE}${path}`), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -17,7 +19,7 @@ export async function hermesPut<T = any>(path: string, body: any): Promise<T> {
 }
 
 export async function hermesPost<T = any>(path: string, body?: any): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(apiUrl(`${BASE}${path}`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
@@ -27,7 +29,7 @@ export async function hermesPost<T = any>(path: string, body?: any): Promise<T> 
 }
 
 export async function hermesDelete<T = any>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { method: 'DELETE' });
+  const res = await fetch(apiUrl(`${BASE}${path}`), { method: 'DELETE' });
   if (!res.ok) throw new Error(`Hermes API ${res.status}: ${await res.text()}`);
   return res.json();
 }
