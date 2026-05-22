@@ -79,15 +79,16 @@ function detectHermesProfiles() {
 //  GENERATORS
 // ═══════════════════════════════════════════════════════════
 
-function generateProfileEnv(localIp, port, apiKey) {
-  const corsOrigins = [
-    `http://${localIp}:5173`,
-    `http://${localIp}:3101`,
-    'http://localhost:5173',
-    'http://localhost:3101',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3101',
-  ].join(',');
+function generateProfileEnv(localIp, port, apiKey, corsPorts = ['5173', '3001']) {
+  // Generate CORS origins for each port + IP combination
+  const ips = [localIp, 'localhost', '127.0.0.1'];
+  const corsOrigins = [];
+  for (const ip of ips) {
+    for (const p of corsPorts) {
+      corsOrigins.push(`http://${ip}:${p}`);
+    }
+  }
+
 
   return [
     '# Don Hermes OS — Auto-generated .env',
@@ -193,7 +194,7 @@ async function main() {
   const isInteractive = process.stdin.isTTY;
   let createDefaultProfile = false;
   let corsIp = localIp;
-  let corsPorts = ['5173', '3101'];
+  let corsPorts = ['5173', '3001'];
 
   if (ciMode) {
     // Non-interactive: auto-create default profile
@@ -207,7 +208,7 @@ async function main() {
     const customIp = await ask(`CORS IP [${localIp}] (press Enter for auto-detected)`);
     if (customIp) corsIp = customIp;
 
-    const customPorts = await ask(`CORS ports (comma-separated) [5173,3101]`);
+    const customPorts = await ask(`CORS ports (comma-separated, e.g. frontend:backend) [5173,3001]`);
     if (customPorts) corsPorts = customPorts.split(',').map(p => p.trim());
   }
 
@@ -222,7 +223,7 @@ async function main() {
     mkdirSync(defaultProfileDir, { recursive: true });
     const port = 8650;
     const apiKey = generateApiKey();
-    const env = generateProfileEnv(corsIp, port, apiKey);
+    const env = generateProfileEnv(corsIp, port, apiKey, corsPorts);
     writeFileSync(`${defaultProfileDir}/.env`, env);
     log('✅', `Created default profile at ${defaultProfileDir}/.env`, 'green');
 

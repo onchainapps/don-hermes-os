@@ -616,43 +616,44 @@ async function handleRequest(req: Request): Response {
               } else {
                 envContent += `\nAPI_SERVER_PORT=${newPort}`;
               }
-              // Regenerate CORS_ORIGINS with auto-detected IP
+              // Regenerate CORS_ORIGINS with auto-detected IP + actual ports
               let localIp = '127.0.0.1';
               try {
                 const ipResult = execSync('hostname -I', { timeout: 2000, encoding: 'utf-8' });
                 const ips = ipResult.trim().split(/\s+/).filter(ip => ip.includes('.'));
                 if (ips.length > 0) localIp = ips[0];
               } catch (_) {}
-              const corsOrigins = [
-                `http://${localIp}:5173`,
-                `http://${localIp}:3101`,
-                'http://localhost:5173',
-                'http://localhost:3101',
-                'http://127.0.0.1:5173',
-                'http://127.0.0.1:3101',
-              ].join(',');
+              const backendPort = process.env.PORT || '3000';
+              const frontendPort = body.corsPorts || '5173,3001';  // comma-sep, from request
+              const corsPorts = String(frontendPort).split(',');
+              const corsIps = [localIp, 'localhost', '127.0.0.1'];
+              const corsOrigins = [];
+              for (const ip of corsIps) {
+                for (const cp of corsPorts) {
+                  corsOrigins.push(`http://${ip}:${cp.trim()}`);
+                }
+              }
               if (envContent.includes('API_SERVER_CORS_ORIGINS=')) {
                 envContent = envContent.replace(/API_SERVER_CORS_ORIGINS=.*/g, `API_SERVER_CORS_ORIGINS=${corsOrigins}`);
               }
               writeFileSync(newEnvPath, envContent);
             } else {
               // No template: generate fresh .env with defaults
-              // Auto-detect local IP for CORS origins
+              // Auto-detect local IP + actual ports for CORS origins
               let localIp = '127.0.0.1';
               try {
                 const ipResult = execSync('hostname -I', { timeout: 2000, encoding: 'utf-8' });
                 const ips = ipResult.trim().split(/\s+/).filter(ip => ip.includes('.'));
                 if (ips.length > 0) localIp = ips[0];
               } catch (_) {}
-
-              const corsOrigins = [
-                `http://${localIp}:5173`,
-                `http://${localIp}:3101`,
-                'http://localhost:5173',
-                'http://localhost:3101',
-                'http://127.0.0.1:5173',
-                'http://127.0.0.1:3101',
-              ].join(',');
+              const corsPortsNt = (body.corsPorts || '5173,3001').split(',');
+              const corsIpsNt = [localIp, 'localhost', '127.0.0.1'];
+              const corsOrigins = [];
+              for (const ip of corsIpsNt) {
+                for (const cp of corsPortsNt) {
+                  corsOrigins.push(`http://${ip}:${cp.trim()}`);
+                }
+              }
 
               writeFileSync(newEnvPath, [
                 '#API SERVER SETTINGS',
