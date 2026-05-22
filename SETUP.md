@@ -2,6 +2,20 @@
 
 Don Hermes OS is a conversational AI workspace dashboard with per-profile Hermes Agent gateway proxying. It runs on Bun+SolidJS+Vite (frontend) and Bun+Elysia (backend).
 
+## Port Convention
+
+Don Hermes OS uses a fixed port scheme. **Do not change these without updating CORS** — every Hermes Agent profile's `.env` lists these ports in `API_SERVER_CORS_ORIGINS`.
+
+| Service | Port | Why |
+|---------|------|-----|
+| Backend API | `3001` | Bun + Elysia server |
+| Dashboard (production) | `3002` | Vite preview (static build) |
+| Dashboard (dev mode) | `5173` | Vite dev server (hot-reload) |
+
+If you change a port, you MUST update `API_SERVER_CORS_ORIGINS` in `~/.hermes/profiles/*/.env` to include the new port for every IP (LAN, localhost, 127.0.0.1).
+
+---
+
 ## Quick Start
 
 ```bash

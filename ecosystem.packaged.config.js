@@ -1,8 +1,16 @@
-// Packaged ecosystem — uses installed npm packages at ~/.bun/packages/
-// Build + install first:
+// ─── Don Hermes OS — Packaged (Production) Ecosystem ───
+// Port convention (must stay consistent — these feed into API_SERVER_CORS_ORIGINS):
+//   3001  = backend API (Bun)
+//   3002  = frontend dashboard (Vite preview)
+//   3003  = mirror-trader autonomous
+//   Hermes gateway ports (8642, 8650+) are managed by Hermes Agent, not here.
+//
+// If you change any port below, update API_SERVER_CORS_ORIGINS in every profile's .env too.
+//
+// Build + install before starting:
 //   cd frontend && npx vite build
 //   cd backend && bun build src/server.ts --outdir=dist --target=bun
-//   npm pack && tar -xzf ... -C ~/.bun/packages/
+//   npm pack && npm install -g <tgz>
 //   pm2 start ecosystem.packaged.config.js
 module.exports = {
   apps: [
@@ -22,7 +30,7 @@ module.exports = {
       script: 'node',
       args: ['/home/don/.bun/packages/don-os-frontend/scripts/run.mjs'],
       cwd: '/home/don/.bun/packages/don-os-frontend',
-      env: { NODE_ENV: 'production', PORT: '3101' },
+      env: { NODE_ENV: 'production', PORT: '3002' },
       exec_mode: 'fork',
       error_file: '/home/don/logs/don-os-dashboard.err.log',
       out_file: '/home/don/logs/don-os-dashboard.out.log',

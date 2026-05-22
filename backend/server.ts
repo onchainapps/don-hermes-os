@@ -463,7 +463,8 @@ async function handleRequest(req: Request): Response {
       if (pathname === '/api/hermes/profiles' && method === 'GET') {
         try {
           // Parse `hermes gateway list` output for accurate status
-          const output = execSync('hermes gateway list 2>/dev/null', {
+          const hermesBin = `${process.env.HOME || '/home/don'}/.hermes/hermes-agent/venv/bin/hermes`;
+          const output = execSync(hermesBin, ['gateway', 'list'], {
             timeout: 10000,
             encoding: 'utf-8',
           });
@@ -624,7 +625,7 @@ async function handleRequest(req: Request): Response {
                 if (ips.length > 0) localIp = ips[0];
               } catch (_) {}
               const backendPort = process.env.PORT || '3000';
-              const frontendPort = body.corsPorts || '5173,3001';  // comma-sep, from request
+              const frontendPort = body.corsPorts || '3001,3002';  // comma-sep, from request
               const corsPorts = String(frontendPort).split(',');
               const corsIps = [localIp, 'localhost', '127.0.0.1'];
               const corsOrigins = [];
@@ -646,7 +647,7 @@ async function handleRequest(req: Request): Response {
                 const ips = ipResult.trim().split(/\s+/).filter(ip => ip.includes('.'));
                 if (ips.length > 0) localIp = ips[0];
               } catch (_) {}
-              const corsPortsNt = (body.corsPorts || '5173,3001').split(',');
+              const corsPortsNt = (body.corsPorts || '3001,3002').split(',');
               const corsIpsNt = [localIp, 'localhost', '127.0.0.1'];
               const corsOrigins = [];
               for (const ip of corsIpsNt) {

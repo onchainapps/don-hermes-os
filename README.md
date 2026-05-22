@@ -36,9 +36,16 @@ See `SETUP.md` in the repo root for detailed installation instructions.
 
 | Layer | Stack | Port |
 |-------|-------|------|
-| **Frontend** | SolidJS + Vite + Tailwind | `:5173` (dev) |
-| **Backend** | Bun + Elysia | `:3001` |
-| **Gateway** | Hermes Agent per profile | `:8642+` (proxy via `/gp`) |
+| **Backend API** | Bun + Elysia | `:3001` |
+| **Dashboard (production)** | Vite preview (static build) | `:3002` |
+| **Dashboard (dev)** | Vite dev server (hot-reload) | `:5173` |
+| **Hermes Gateway** | Hermes Agent per profile | `:8642+` (proxy via `/gp`) |
+
+> ⚠️ **Ports matter for CORS.** These ports must match `API_SERVER_CORS_ORIGINS` in every Hermes profile's `.env`. If you change any port, update all profiles:
+> ```
+> API_SERVER_CORS_ORIGINS=http://YOUR_IP:3001,http://YOUR_IP:3002,http://localhost:3001,...
+> ```
+> The setup script handles this automatically (`node scripts/setup.mjs`), but if you're changing ports manually, don't forget to sync CORS.
 
 ## Features
 

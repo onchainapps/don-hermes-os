@@ -16,11 +16,11 @@
     "bun": ">=1.3.12"
   },
   "scripts": {
-    "build": "bun build src/server.ts --outdir=dist --target=bun",
+    "build": "bun build server.ts --outdir=dist --target=bun",
     "start": "bun run server.ts",
     "dev": "bun run --watch server.ts",
     "test": "bun test",
-    "pm2": "bun dist/server.js",
+    "pm2": "bun run dist/server.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

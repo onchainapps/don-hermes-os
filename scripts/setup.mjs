@@ -79,7 +79,7 @@ function detectHermesProfiles() {
 //  GENERATORS
 // ═══════════════════════════════════════════════════════════
 
-function generateProfileEnv(localIp, port, apiKey, corsPorts = ['5173', '3001']) {
+function generateProfileEnv(localIp, port, apiKey, corsPorts = ['3001', '3002']) {
   // Generate CORS origins for each port + IP combination
   const ips = [localIp, 'localhost', '127.0.0.1'];
   const corsOrigins = [];
@@ -194,7 +194,8 @@ async function main() {
   const isInteractive = process.stdin.isTTY;
   let createDefaultProfile = false;
   let corsIp = localIp;
-  let corsPorts = ['5173', '3001'];
+  let corsPorts = ['3001', '3002'];
+  let corsPortsDefault = ['3001', '3002'];
 
   if (ciMode) {
     // Non-interactive: auto-create default profile
@@ -208,7 +209,8 @@ async function main() {
     const customIp = await ask(`CORS IP [${localIp}] (press Enter for auto-detected)`);
     if (customIp) corsIp = customIp;
 
-    const customPorts = await ask(`CORS ports (comma-separated, e.g. frontend:backend) [5173,3001]`);
+    const customPorts = await ask(`CORS ports (comma-separated: backend,frontend) [3001,3002]`);
+
     if (customPorts) corsPorts = customPorts.split(',').map(p => p.trim());
   }
 

@@ -19,7 +19,7 @@
     "build": "NODE_OPTIONS='--max-old-space-size=4096' vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "pm2": "vite build && vite preview --host 0.0.0.0 --port 3101"
+    "pm2": "vite build && vite preview --host 0.0.0.0 --port 3002"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",

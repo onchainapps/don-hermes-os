@@ -1,5 +1,11 @@
-// Dev ecosystem — uses local source via bun run (hot-reload capable)
-// Usage: pm2 start ecosystem.config.js --env dev
+// ─── Don Hermes OS — Dev Ecosystem ───
+// Port convention (must stay consistent — these feed into API_SERVER_CORS_ORIGINS):
+//   3001  = backend API (Bun)
+//   3002  = frontend dashboard (Vite)
+//   3003  = mirror-trader autonomous
+//   Hermes gateway ports (8642, 8650+) are managed by Hermes Agent, not here.
+//
+// If you change any port below, update API_SERVER_CORS_ORIGINS in every profile's .env too.
 module.exports = {
   apps: [
     {
@@ -17,7 +23,7 @@ module.exports = {
       script: 'bun',
       args: ['run', 'dev'],
       cwd: '/home/don/dev/git/don-hermes-os/frontend',
-      env: { NODE_ENV: 'development', PORT: '5173' },
+      env: { NODE_ENV: 'development', PORT: '3002' },
       exec_mode: 'fork',
       error_file: '/home/don/logs/don-os-dashboard-dev-error.log',
       out_file: '/home/don/logs/don-os-dashboard-dev-out.log',
