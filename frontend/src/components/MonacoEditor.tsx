@@ -323,6 +323,8 @@ export default function MonacoEditor(props: MonacoEditorProps) {
   let containerRef: HTMLDivElement | undefined;
   let editor: monaco.editor.IStandaloneCodeEditor | undefined;
   let completionDisposer: { dispose: () => void } | undefined;
+  let codeActionDisposer: monaco.IDisposable | undefined;
+  const commandDisposers: monaco.IDisposable[] = [];
   const [tabs, setTabs] = createSignal<FileTab[]>([]);
   const [activeTab, setActiveTab] = createSignal<string>('index.ts');
   const [isReady, setIsReady] = createSignal(false);
@@ -863,15 +865,16 @@ ${selInfo.code}
     // Register Don AI commands that dispatch to EditorChat via don-prompt event
     const donCommands = ['don-explain', 'don-refactor', 'don-bugs', 'don-optimize', 'don-tests'] as const;
     for (const cmd of donCommands) {
-      monaco.editor.registerCommand(cmd, (_accessor: any, code: string) => {
+      const disposable = monaco.editor.registerCommand(cmd, (_accessor: any, code: string) => {
         const action = cmd.replace('don-', '');
         const prompt = `${action.charAt(0).toUpperCase() + action.slice(1)} this code:\n\`\`\`\n${code}\n\`\`\``;
         window.dispatchEvent(new CustomEvent('don-prompt', { detail: { prompt } }));
       });
+      commandDisposers.push(disposable);
     }
 
     // Register CodeActionProvider — shows lightbulb on code selection
-    monaco.languages.registerCodeActionProvider('*', {
+    codeActionDisposer = monaco.languages.registerCodeActionProvider('*', {
       provideCodeActions: (model, range) => {
         const selectedText = model.getValueInRange(range);
         if (!selectedText.trim()) return { actions: [], dispose: () => {} };
@@ -918,6 +921,8 @@ ${selInfo.code}
     onCleanup(() => {
       completionDisposer?.dispose();
       markerDisposer?.dispose();
+      codeActionDisposer?.dispose();
+      for (const d of commandDisposers) d.dispose();
       containerRef?.removeEventListener('contextmenu', contextMenuHandler);
       editor?.dispose();
       Object.values(saveTimers).forEach(clearTimeout);
