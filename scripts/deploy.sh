@@ -39,28 +39,29 @@ cd "$ROOT"
 # ─── 2. npm install -g ──────────────────────────────────────────────────────
 step "Installing globally…"
 npm install -g "$BE_TGZ" "$FE_TGZ" 2>&1 | \
-  grep -v "^npm notice\|^npm find\|^funding\|added\|audited\|^npm warn" || true
+  grep -v "^npm notice\|^npm find\|^funding\|added\|audited\|^npm warn" 2>/dev/null || true
 rm -f "$BE_TGZ" "$FE_TGZ"
 ok "Installed"
 
 # ─── 3. PM2 restart ────────────────────────────────────────────────────────
 step "Restarting PM2 (--update-env)…"
-pm2 restart don-os-backend don-os-dashboard --update-env 2>&1 | grep -v "Applying\|scanning" || true
+pm2 restart don-os-backend don-os-dashboard --update-env 2>&1 | grep -Evi "Applying|scanning|^[[:space:]]*([│├└─]|PM2)" || true
 sleep 3
 
-B_PID="$(pm2 pid don-os-backend  2>/dev/null || echo '?')"
-D_PID="$(pm2 pid don-os-dashboard 2>/dev/null || echo '?')"
+B_PID="$(cat ~/.pm2/pids/don-os-backend-*.pid 2>/dev/null | head -1 || echo '?')"
+D_PID="$(cat ~/.pm2/pids/don-os-dashboard-*.pid 2>/dev/null | head -1 || echo '?')"
 ok "backend=$B_PID | dashboard=$D_PID"
 
 # ─── 4. Verify ─────────────────────────────────────────────────────────────
 step "Verifying production :3001…"
 check() {
-  local ok_=0
+  local name="$1"; shift
+  local expected="$1"; shift
   local code="$("$@")"
-  if [[ "$code" == "$2" ]]; then
-    ok "${1} → $code"
+  if [[ "$code" == "$expected" ]]; then
+    ok "$name → $code"
   else
-    err "${1} → $code (expected $2)"
+    err "$name → $code (expected $expected)"
   fi
 }
 
@@ -75,7 +76,8 @@ check "GP + Origin"  "202" curl -sf -X POST "http://127.0.0.1:$PORT/gp/v1/runs" 
   -d '{"input":"upgrade-test","stream":false}' \
   -o /dev/null -w "%{http_code}"
 
-NPROF=$(curl -sf "http://127.0.0.1:$PORT/api/hermes/profiles" 2>/dev/null | node -e "c=>process.stdout.write(String(JSON.parse(c).profiles.length))")
+NPROF=$(curl -sf "http://127.0.0.1:$PORT/api/hermes/profiles" 2>/dev/null \
+  | node -e "try{console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).profiles.length)}catch(e){console.log('?')}")
 ok "Active profiles: $NPROF"
 
 echo ""
