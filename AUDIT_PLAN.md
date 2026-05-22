@@ -16,7 +16,7 @@
 - `src/lib/chatStore.ts` — contains `ChatMessage` interface + signal-based chat state, 0 imports
 - `src/lib/chatStorage.ts` — IndexedDB chat storage with localStorage fallback, 0 imports
 - `src/lib/slashRpc.ts` — slash command RPC (`slashRpc()`, `getStatus()`), 0 imports
-- `src/lib/gateway.ts` — 0 imports
+- `src/lib/gatewayClient.ts` — marked `@deprecated`, 0 imports
 - `src/lib/api-base.ts` — Wait, this IS imported by `App.tsx`, `MonacoEditor.tsx`, `CodeCompletions.ts` ✓ Keep
 
 **Components — safe to delete:**

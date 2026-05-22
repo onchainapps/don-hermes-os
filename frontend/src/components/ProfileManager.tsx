@@ -92,14 +92,14 @@ export default function ProfileManager() {
           setRefreshingProfile(null);
           return;
         }
-      } catch {}
+      } catch (e) { console.warn('[ProfileManager] fetchProfilesWithRetry attempt failed:', e); }
       if (attempt < retries - 1) await new Promise(r => setTimeout(r, delay));
     }
     // Fallback: just fetch anyway
     try {
       const data = await hermesGet<{ profiles: HermesProfile[] }>('/profiles');
       setProfiles(data.profiles);
-    } catch {}
+    } catch (e) { console.warn('[ProfileManager] fetchProfilesWithRetry attempt failed:', e); }
     setRefreshingProfile(null);
   };
 
@@ -374,12 +374,12 @@ export default function ProfileManager() {
                             </span>
 
                             {/* Gateway port + PID indicator */}
-                            <Show when={profile.gatewayPort}>
+                            <Show when={profile.gatewayPort != null && profile.gatewayPort > 0}>
                               <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-hermes-cyan/10 text-hermes-cyan border border-hermes-cyan/30">
                                 :{profile.gatewayPort}
                               </span>
                             </Show>
-                            <Show when={profile.pid}>
+                            <Show when={profile.pid != null && profile.pid > 0}>
                               <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
                                 PID {profile.pid}
                               </span>

@@ -789,6 +789,9 @@ async function handleRequest(req: Request): Response {
                 encoding: 'utf-8',
                 stdio: 'pipe',
               });
+
+              // Short delay to let gateway finish initializing before status check
+              await Bun.sleep(2500);
             } catch (gwErr: any) {
               console.error(`[profiles/start] gateway activation failed for ${name}:`, gwErr.message);
               return jsonErr(500, `Failed to start gateway: ${gwErr.message}`);

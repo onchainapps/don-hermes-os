@@ -227,7 +227,9 @@ export default function ProfileChat(props: ProfileChatProps) {
       const lastUser = [...msgs].reverse().find(m => m.role === 'user');
       if (lastUser) {
         setInput(lastUser.content);
-        setMessages(prev => prev.slice(0, -2)); // pop last assistant + user
+        const lastMsg = msgs[msgs.length - 1];
+        const popCount = lastMsg.role === 'user' ? 1 : 2;
+        setMessages(prev => prev.slice(0, -popCount));
       }
       return true;
     }
