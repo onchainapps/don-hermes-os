@@ -36,8 +36,8 @@ See `SETUP.md` in the repo root for detailed installation instructions.
 
 | Service | Stack | Port | Mode |
 |---------|-------|------|------|
-| **Backend API (production)** | Bun + Elysia (dist bundle) | `:3001` | fork |
-| **Backend API (dev)** | Bun + Elysia (hot-reload) | `:3001` | fork |
+| **Backend API (production)** | Bun + Elysia (installed dist bundle) | `:3001` | fork |
+| **Backend API (dev)** | Bun + Elysia (source, hot-reload) | `:3003` | fork |
 | **Dashboard (production)** | Vite preview (static build) | `:3002` | fork |
 | **Dashboard (dev)** | Vite dev server (hot-reload) | `:5173` | fork |
 | **Hermes Gateway** | Hermes Agent per profile | `:8642+` | — |

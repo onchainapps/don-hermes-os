@@ -8,7 +8,8 @@ Don Hermes OS uses a fixed port scheme. **Do not change these without updating C
 
 | Service | Port | Why |
 |---------|------|-----|
-| Backend API | `3001` | Bun + Elysia server |
+| Backend API (production) | `3001` | Installed dist bundle (stable) |
+| Backend API (dev) | `3003` | Source hot-reload |
 | Dashboard (production) | `3002` | Vite preview (static build) |
 | Dashboard (dev mode) | `5173` | Vite dev server (hot-reload) |
 
