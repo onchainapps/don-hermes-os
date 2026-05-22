@@ -341,6 +341,16 @@ async function handleRequest(req: Request): Response {
     return jsonOk({ status: 'ok', service: 'don-os-backend', port: PORT, gateway: `${GATEWAY_HOST}:${GATEWAY_PORT}` });
   }
 
+  // API: version info
+  if (pathname === '/api/version') {
+    try {
+      const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+      return jsonOk({ backend: pkg.version, name: pkg.name });
+    } catch {
+      return jsonOk({ backend: '0.0.0', name: 'don-os-backend' });
+    }
+  }
+
   // API: system stats
   if (pathname === '/api/stats') {
     return jsonOk(getStats());
