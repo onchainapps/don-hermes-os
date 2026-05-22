@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // don-os-backend bin shim — runs bundled server.js from dist/
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
