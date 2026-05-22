@@ -1,4 +1,4 @@
-import { createSignal, For, Show, createMemo, createEffect, onMount } from 'solid-js';
+import { createSignal, For, Show, createMemo, createEffect, onMount, onCleanup } from 'solid-js';
 import { hermesGet, hermesPost, hermesDelete, hermesPut } from '../lib/hermesApi';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -6,6 +6,7 @@ import { hermesGet, hermesPost, hermesDelete, hermesPut } from '../lib/hermesApi
 interface HermesProfile {
   name: string;
   status: 'active' | 'standby' | 'not-yet-created';
+  pid?: number | null;
   gatewayPort?: number;
   apiKey?: string;
 }
@@ -44,6 +45,7 @@ export default function ProfileManager() {
   const [isCreating, setIsCreating] = createSignal(false);
   const [profileDetails, setProfileDetails] = createSignal<ProfileDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = createSignal(false);
+  const [refreshingProfile, setRefreshingProfile] = createSignal<string | null>(null);
 
   const fetchProfileDetails = async (name: string) => {
     setFetchingProfile(name);
@@ -78,7 +80,39 @@ export default function ProfileManager() {
     }
   };
 
+  const fetchProfilesWithRetry = async (profileName: string, retries = 5, delay = 1200) => {
+    setRefreshingProfile(profileName);
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const data = await hermesGet<{ profiles: HermesProfile[] }>('/profiles');
+        const updated = data.profiles.find((p: HermesProfile) => p.name === profileName);
+        if (updated && (updated.status === 'active' || updated.status === 'standby')) {
+          setProfiles(data.profiles);
+          setError(null);
+          setRefreshingProfile(null);
+          return;
+        }
+      } catch {}
+      if (attempt < retries - 1) await new Promise(r => setTimeout(r, delay));
+    }
+    // Fallback: just fetch anyway
+    try {
+      const data = await hermesGet<{ profiles: HermesProfile[] }>('/profiles');
+      setProfiles(data.profiles);
+    } catch {}
+    setRefreshingProfile(null);
+  };
+
   onMount(fetchProfiles);
+
+  // Auto-poll every 30s so status stays fresh without manual refresh
+  let pollTimer: ReturnType<typeof setInterval>;
+  onMount(() => {
+    pollTimer = setInterval(() => {
+      if (!refreshingProfile()) fetchProfiles();
+    }, 30000);
+  });
+  onCleanup(() => clearInterval(pollTimer));
 
   const handleCreate = async (e: Event) => {
     e.preventDefault();
@@ -105,7 +139,7 @@ export default function ProfileManager() {
   const handleStart = async (name: string) => {
     try {
       await hermesPost('/profiles/start', { name });
-      await fetchProfiles();
+      await fetchProfilesWithRetry(name);
     } catch (e: any) {
       alert(`Error starting profile: ${e.message}`);
     }
@@ -114,7 +148,7 @@ export default function ProfileManager() {
   const handleStop = async (name: string) => {
     try {
       await hermesPost('/profiles/stop', { name });
-      await fetchProfiles();
+      await fetchProfilesWithRetry(name);
     } catch (e: any) {
       alert(`Error stopping profile: ${e.message}`);
     }
@@ -339,10 +373,15 @@ export default function ProfileManager() {
                               {statusLabel(profile.status)}
                             </span>
 
-                            {/* Gateway port + status indicator */}
+                            {/* Gateway port + PID indicator */}
                             <Show when={profile.gatewayPort}>
                               <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-hermes-cyan/10 text-hermes-cyan border border-hermes-cyan/30">
                                 :{profile.gatewayPort}
+                              </span>
+                            </Show>
+                            <Show when={profile.pid}>
+                              <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+                                PID {profile.pid}
                               </span>
                             </Show>
                           </div>
