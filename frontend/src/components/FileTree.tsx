@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api-base';
 import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid-js';
 
 interface FileEntry {
@@ -100,7 +101,7 @@ export default function FileTree(props: FileTreeProps) {
 
   const fetchDir = async (path: string): Promise<FileEntry[]> => {
     try {
-      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+      const res = await fetch(apiUrl(`/api/files?path=${encodeURIComponent(path)}`));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.entries) {
@@ -236,15 +237,15 @@ export default function FileTree(props: FileTreeProps) {
 
       try {
         // Read file content, create new file, delete old
-        const res = await fetch(`/api/files?path=${encodeURIComponent(oldPath)}`);
+        const res = await fetch(apiUrl(`/api/files?path=${encodeURIComponent(oldPath)}`));
         if (res.ok) {
           const data = await res.json();
-          await fetch('/api/files', {
+          await fetch(apiUrl('/api/files'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: newPath, content: data.content || '' }),
           });
-          await fetch('/api/files/delete', {
+          await fetch(apiUrl('/api/files/delete'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: oldPath, recursive: false }),
@@ -257,7 +258,7 @@ export default function FileTree(props: FileTreeProps) {
     } else if (state.type === 'new-file' || state.type === 'new-folder') {
       const newPath = `${state.parentPath}/${renameValue()}`;
       try {
-        await fetch('/api/files/create', {
+        await fetch(apiUrl('/api/files/create'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -291,7 +292,7 @@ export default function FileTree(props: FileTreeProps) {
 
     try {
       const isDir = path.endsWith('/') || tree().some(n => n.entry.path === path && n.entry.type === 'directory');
-      await fetch('/api/files/delete', {
+      await fetch(apiUrl('/api/files/delete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, recursive: true }),

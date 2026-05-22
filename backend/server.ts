@@ -3,7 +3,7 @@
  * Pure API with Hermes integration (no static file serving).
  *
  * Env vars:
- *   PORT          — listen port (default: 3000)
+ *   PORT          — listen port (default: 3001)
  *   HERMES_STATE_DB     — path to hermes state.db (default: ~/.hermes/state.db)
  *   GATEWAY_HOST  — Hermes gateway host (default: 127.0.0.1)
  *   GATEWAY_PORT  — Hermes gateway port (default: 8642)
@@ -21,7 +21,7 @@ import YAML from 'yaml';
 import { execSync } from 'child_process';
 import { Database } from 'bun:sqlite';
 
-const PORT = parseInt(process.env.PORT || '3000');
+const PORT = parseInt(process.env.PORT || '3001');
 const HERMES_STATE_DB = process.env.HERMES_STATE_DB || join(process.env.HOME || '/home/don', '.hermes/state.db');
 const GATEWAY_HOST = process.env.GATEWAY_HOST || '127.0.0.1';
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || '8642');
@@ -634,7 +634,7 @@ async function handleRequest(req: Request): Response {
                 const ips = ipResult.trim().split(/\s+/).filter(ip => ip.includes('.'));
                 if (ips.length > 0) localIp = ips[0];
               } catch (_) {}
-              const backendPort = process.env.PORT || '3000';
+              const backendPort = process.env.PORT || '3001';
               const frontendPort = body.corsPorts || '3001,3002';  // comma-sep, from request
               const corsPorts = String(frontendPort).split(',');
               const corsIps = [localIp, 'localhost', '127.0.0.1'];

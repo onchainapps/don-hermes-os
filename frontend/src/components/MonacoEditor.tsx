@@ -807,7 +807,7 @@ ${selInfo.code}
     for (const tab of models) {
       if (tab.filePath) {
         const currentTab = tab;
-        fetch(`/api/files?path=${encodeURIComponent(tab.filePath)}`)
+        fetch(apiUrl(`/api/files?path=${encodeURIComponent(tab.filePath)}`))
           .then(r => { if (r.ok) return r.json(); throw new Error('fetch failed'); })
           .then(data => {
             if (data.content !== undefined) {
@@ -968,7 +968,7 @@ ${selInfo.code}
     const gen = ++fileLoadGeneration;
 
     // Fetch file content from API
-    fetch(`/api/files?path=${encodeURIComponent(filePath)}`)
+    fetch(apiUrl(`/api/files?path=${encodeURIComponent(filePath)}`))
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

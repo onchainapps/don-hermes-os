@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api-base';
 import { createSignal, onMount, onCleanup, For, Show } from 'solid-js';
 
 interface SearchResult {
@@ -43,7 +44,7 @@ export default function ProjectSearch(props: ProjectSearchProps) {
         caseSensitive: String(caseSensitive()),
         path: props.projectRoot,
       });
-      const res = await fetch(`/api/search?${params}`);
+      const res = await fetch(apiUrl(`/api/search?${params}`));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const raw: SearchResult[] = data.results || [];
@@ -87,7 +88,7 @@ export default function ProjectSearch(props: ProjectSearchProps) {
     // For each file, replace all matches
     for (const file of results()) {
       try {
-        const res = await fetch('/api/files?path=' + encodeURIComponent(file.file));
+        const res = await fetch(apiUrl('/api/files?path=' + encodeURIComponent(file.file)));
         if (!res.ok) continue;
         const data = await res.json();
         let content = data.content || '';
@@ -98,7 +99,7 @@ export default function ProjectSearch(props: ProjectSearchProps) {
           const flags = caseSensitive() ? 'g' : 'gi';
           content = content.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags), replaceText());
         }
-        await fetch('/api/files', {
+        await fetch(apiUrl('/api/files'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path: file.file, content }),

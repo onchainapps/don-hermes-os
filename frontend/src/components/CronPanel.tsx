@@ -20,7 +20,7 @@ interface CronPanelProps {
 
 export default function CronPanel(props: CronPanelProps) {
   // Route through gateway proxy when a profile is set (per-profile cron jobs)
-  const cronUrl = (path: string) => props.profile ? `/gp/api/jobs${path}` : `/api/jobs${path}`;
+  const cronUrl = (path: string) => props.profile ? apiUrl(`/gp/api/jobs${path}`) : apiUrl(`/api/jobs${path}`);
   const cronHeaders = (): Record<string, string> => {
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
     if (props.profile) h['X-Hermes-Profile'] = props.profile;

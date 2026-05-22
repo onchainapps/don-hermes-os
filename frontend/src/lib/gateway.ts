@@ -4,8 +4,10 @@
  * Uses /gp/v1/chat/completions which routes through the profile-aware proxy.
  */
 
+import { apiUrl } from '../lib/api-base';
+
 export function gatewayChatUrl(profileName?: string): string {
-  return `/gp/v1/chat/completions`;
+  return apiUrl('/gp/v1/chat/completions');
 }
 
 export function gatewayHeaders(profileName?: string, sessionId?: string): Record<string, string> {

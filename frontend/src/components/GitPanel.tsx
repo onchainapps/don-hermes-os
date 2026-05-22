@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api-base';
 import { createSignal, onMount, onCleanup, For, Show } from 'solid-js';
 import DiffPreview from './DiffPreview';
 
@@ -29,7 +30,7 @@ export default function GitPanel(props: GitPanelProps) {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`/api/git/status?repo=${encodeURIComponent(repo())}`);
+      const res = await fetch(apiUrl(`/api/git/status?repo=${encodeURIComponent(repo())}`));
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         const msg = data.error || `HTTP ${res.status}`;
@@ -52,7 +53,7 @@ export default function GitPanel(props: GitPanelProps) {
 
   const fetchLog = async () => {
     try {
-      const res = await fetch(`/api/git/log?repo=${encodeURIComponent(repo())}&n=20`);
+      const res = await fetch(apiUrl(`/api/git/log?repo=${encodeURIComponent(repo())}&n=20`));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const output: string = data.output || data.stdout || '';
@@ -65,7 +66,7 @@ export default function GitPanel(props: GitPanelProps) {
 
   const fetchBranches = async () => {
     try {
-      const res = await fetch(`/api/git/branches?repo=${encodeURIComponent(repo())}`);
+      const res = await fetch(apiUrl(`/api/git/branches?repo=${encodeURIComponent(repo())}`));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const output: string = data.output || data.stdout || '';
@@ -116,14 +117,14 @@ export default function GitPanel(props: GitPanelProps) {
   const showDiff = async (filePath: string) => {
     try {
       // Get git diff
-      const diffRes = await fetch(`/api/git/diff?repo=${encodeURIComponent(repo())}&file=${encodeURIComponent(filePath)}`);
+      const diffRes = await fetch(apiUrl(`/api/git/diff?repo=${encodeURIComponent(repo())}&file=${encodeURIComponent(filePath)}`));
       if (!diffRes.ok) throw new Error(`HTTP ${diffRes.status}`);
       const diffData = await diffRes.json();
       const diffOutput: string = diffData.output || '';
 
       // Get current file content
       const fullPath = `${repo()}/${filePath}`;
-      const fileRes = await fetch(`/api/files?path=${encodeURIComponent(fullPath)}`);
+      const fileRes = await fetch(apiUrl(`/api/files?path=${encodeURIComponent(fullPath)}`));
       let modified = '';
       if (fileRes.ok) {
         const fileData = await fileRes.json();
@@ -190,7 +191,7 @@ export default function GitPanel(props: GitPanelProps) {
 
   const stageFile = async (file: string) => {
     try {
-      const res = await fetch('/api/git/stage', {
+      const res = await fetch(apiUrl('/api/git/stage'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo: repo(), file }),
@@ -204,7 +205,7 @@ export default function GitPanel(props: GitPanelProps) {
 
   const unstageFile = async (file: string) => {
     try {
-      const res = await fetch('/api/git/unstage', {
+      const res = await fetch(apiUrl('/api/git/unstage'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo: repo(), file }),
@@ -221,7 +222,7 @@ export default function GitPanel(props: GitPanelProps) {
     if (!msg) return;
     setCommitting(true);
     try {
-      const res = await fetch('/api/git/commit', {
+      const res = await fetch(apiUrl('/api/git/commit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo: repo(), message: msg }),
@@ -257,7 +258,7 @@ export default function GitPanel(props: GitPanelProps) {
     // Reject means restore original version
     try {
       const fullPath = `${repo()}/${diff.file}`;
-      await fetch('/api/files', {
+      await fetch(apiUrl('/api/files'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: fullPath, content: diff.original }),

@@ -1,3 +1,4 @@
+import { apiUrl } from '../lib/api-base';
 import { createSignal, createEffect, on, onMount, onCleanup, For, Show } from 'solid-js';
 
 interface Session {
@@ -40,7 +41,7 @@ export default function SessionPanel() {
     if (f === 'done') params.set('active', 'false');
     if (sourceFilter()) params.set('source', sourceFilter());
 
-    fetch(`/api/sessions?${params}`)
+    fetch(apiUrl(`/api/sessions?${params}`))
       .then(r => r.json())
       .then(data => {
         setSessions(data.sessions || []);
@@ -53,7 +54,7 @@ export default function SessionPanel() {
   const fetchMessages = (sessionId: string) => {
     setSelectedSession(sessionId);
     setLoadingMessages(true);
-    fetch(`/api/sessions/${sessionId}/messages?limit=50`)
+    fetch(apiUrl(`/api/sessions/${sessionId}/messages?limit=50`))
       .then(r => r.json())
       .then(data => {
         setMessages(data.messages || []);

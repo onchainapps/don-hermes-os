@@ -74,7 +74,7 @@ const STEPS: StepDef[] = [
     features: [
       '<b>Backend</b> (port 3001) — API proxy · profile CRUD · stats · editor context',
       '<b>Gateway</b> (port 8642) — the Hermes Agent itself, one per profile (8650+)',
-      '<b>Frontend</b> (dev :5173 / prod :3101) — SolidJS/Vite/Tailwind dashboard',
+      '<b>Frontend</b> (dev :5173 / prod :3002) — SolidJS/Vite/Tailwind dashboard',
       'Clone → <b>npm run setup</b> → <b>pm2 start</b> → done',
       '<b>AGENT.md</b> is the agent-readable manual for this repo',
     ],
