@@ -35,6 +35,7 @@ export default function ProfileManager() {
   const [configYaml, setConfigYaml] = createSignal('');
   const [configLoading, setConfigLoading] = createSignal(false);
   const [configStatus, setConfigStatus] = createSignal<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = createSignal(false);
   
   const [newName, setNewName] = createSignal('');
   const [newDescription, setNewDescription] = createSignal('');
@@ -188,8 +189,24 @@ export default function ProfileManager() {
         </div>
       </div>
 
-      {/* Create Profile Form */}
-      <form onSubmit={handleCreate} class="mb-8 p-4 rounded-lg border border-dashed border-hermes-cyan/30 bg-hermes-cyan/05">
+      {/* Create Profile — Toggle */}
+      <div class="mb-6">
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm())}
+          class="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-[11px] tracking-wider transition-all"
+          style={{
+            background: showCreateForm() ? 'rgba(0,243,255,0.15)' : 'rgba(0,243,255,0.07)',
+            color: '#00f3ff',
+            border: `1px solid ${showCreateForm() ? 'rgba(0,243,255,0.4)' : 'rgba(0,243,255,0.2)'}`,
+            'box-shadow': showCreateForm() ? '0 0 20px rgba(0,243,255,0.1)' : 'none',
+          }}
+        >
+          <span>{showCreateForm() ? '▾' : '▸'} CREATE NEW PROFILE</span>
+        </button>
+      </div>
+
+      <Show when={showCreateForm()}>
+        <form onSubmit={handleCreate} class="mb-8 p-5 rounded-xl border border-hermes-cyan/40" style={{ background: 'rgba(0,243,255,0.04)' }}>
         <div class="text-[10px] text-hermes-cyan/70 mb-2 font-mono tracking-widest">CREATE NEW AGENT PROFILE</div>
         <div class="text-[9px] text-hermes-text-dim/60 mb-3">Clone from an existing profile or <span class="text-hermes-cyan">default</span> (fresh Hermes base).</div>
 
@@ -259,6 +276,7 @@ export default function ProfileManager() {
           </button>
         </div>
       </form>
+      </Show>
 
       {/* Error Message */}
       <Show when={error()}>
