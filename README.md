@@ -6,10 +6,8 @@ A conversational AI workspace dashboard with per-profile Hermes Agent gateway pr
 
 ---
 
-## Intro
-
-![Video](href="https://raw.githubusercontent.com/onchainapps/don-hermes-os/master/media/onboarding.mp4)   
-
+## Intro 
+[![Don Hermes Os](https://github.com/onchainapps/don-hermes-os/blob/master/media/intro-thumbnail.png)](https://github.com/onchainapps/don-hermes-os/blob/master/media/onboarding.mp4)   
 ---
 
 ## Quick Start
