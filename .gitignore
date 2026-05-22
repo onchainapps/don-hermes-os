@@ -11,8 +11,3 @@ dist/
 
 # Notes/plans/docs — not part of source
 notes/
-# Build artifacts
-*.tgz
-
-# Video assets (dev work, not source)
-video/
