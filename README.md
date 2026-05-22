@@ -34,12 +34,13 @@ See `SETUP.md` in the repo root for detailed installation instructions.
 
 ## Architecture
 
-| Layer | Stack | Port |
-|-------|-------|------|
-| **Backend API** | Bun + Elysia | `:3001` |
-| **Dashboard (production)** | Vite preview (static build) | `:3002` |
-| **Dashboard (dev)** | Vite dev server (hot-reload) | `:5173` |
-| **Hermes Gateway** | Hermes Agent per profile | `:8642+` (proxy via `/gp`) |
+| Service | Stack | Port | Mode |
+|---------|-------|------|------|
+| **Backend API (production)** | Bun + Elysia (dist bundle) | `:3001` | fork |
+| **Backend API (dev)** | Bun + Elysia (hot-reload) | `:3001` | fork |
+| **Dashboard (production)** | Vite preview (static build) | `:3002` | fork |
+| **Dashboard (dev)** | Vite dev server (hot-reload) | `:5173` | fork |
+| **Hermes Gateway** | Hermes Agent per profile | `:8642+` | — |
 
 > ⚠️ **Ports matter for CORS.** These ports must match `API_SERVER_CORS_ORIGINS` in every Hermes profile's `.env`. If you change any port, update all profiles:
 > ```
