@@ -465,12 +465,14 @@ export default function ProfileChat(props: ProfileChatProps) {
       };
       if (sessionId()) body.session_id = sessionId();
 
+      const createTimeout = setTimeout(() => abortController?.abort(), 60000);
       const createRes = await fetch(`${apiBase}/v1/runs`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
         signal,
       });
+      clearTimeout(createTimeout);
 
       log('Response status', createRes.status);
 
@@ -506,7 +508,7 @@ export default function ProfileChat(props: ProfileChatProps) {
       const decoder = new TextDecoder();
       let buffer = '';
 
-      while (true) {
+      streamLoop: while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -531,7 +533,7 @@ export default function ProfileChat(props: ProfileChatProps) {
               // Break out of SSE loop — don't wait for more events
               reader?.cancel().catch(() => {});
               reader = null;
-              break;
+              break streamLoop;
             }
             try {
               const event = JSON.parse(data);
