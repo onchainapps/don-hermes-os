@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 // @ts-ignore
 import '@xterm/xterm/css/xterm.css';
+import { wsUrl } from '../lib/api-base';
 
 const TERM_THEME = {
   background: '#0a0a0f',
@@ -113,7 +114,7 @@ export default function EditorTerminal(props: EditorTerminalProps) {
 
   const connectTerminal = (instance: TerminalInstance, isRetry = false) => {
     if (instance.retryTimeout) clearTimeout(instance.retryTimeout);
-    const url = `ws://${window.location.host}/terminal?cwd=${encodeURIComponent(instance.cwd)}`;
+    const url = `${wsUrl('/terminal')}?cwd=${encodeURIComponent(instance.cwd)}`;
     const ws = new WebSocket(url);
     instance.ws = ws;
     instance.status = isRetry ? 'reconnecting' : 'connecting';
