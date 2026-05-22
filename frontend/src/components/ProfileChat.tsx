@@ -89,13 +89,35 @@ const SLASH_COMMANDS = [
   { cmd: '/stop', desc: 'Stop streaming response' },
   { cmd: '/retry', desc: 'Retry last user message' },
   { cmd: '/status', desc: 'Show gateway status' },
-  { cmd: '/model <name>', desc: 'Change model (e.g. /model qwen3.6)' },
+  { cmd: '/model', desc: 'Interactive model picker (opens selector dialog)' },
   { cmd: '/steer <mode>', desc: 'Busy mode (queue|steer|interrupt|status)' },
   { cmd: '/bg <prompt>', desc: 'Run prompt in background' },
   { cmd: '/queue <prompt>', desc: 'Queue message for later' },
   { cmd: '/compact', desc: 'Compress current session' },
   { cmd: '/session list', desc: 'List session clusters' },
   { cmd: '/profile [name]', desc: 'Switch or show profile' },
+];
+
+interface ModelEntry {
+  id: string;
+  label: string;
+  provider: string;
+  context: number;
+}
+
+const AVAILABLE_MODELS: ModelEntry[] = [
+  { id: 'nous/hermes-3', label: 'Hermes 3', provider: 'Nous', context: 128000 },
+  { id: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash', provider: 'DeepSeek', context: 10000000 },
+  { id: 'openai/gpt-4o', label: 'GPT-4o', provider: 'OpenAI', context: 128000 },
+  { id: 'openai/o3-mini', label: 'o3-mini', provider: 'OpenAI', context: 200000 },
+  { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4', provider: 'Anthropic', context: 200000 },
+  { id: 'anthropic/claude-opus-4', label: 'Claude Opus 4', provider: 'Anthropic', context: 200000 },
+  { id: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'Google', context: 1000000 },
+  { id: 'Qwen3.6-27B-FP8', label: 'Qwen 3.6 27B FP8 (Local)', provider: 'Local (SGLang)', context: 262111 },
+  { id: 'meta/llama-4', label: 'Llama 4', provider: 'Meta', context: 128000 },
+  { id: 'mistral/mistral-large', label: 'Mistral Large', provider: 'Mistral', context: 128000 },
+  { id: 'xai/grok-4', label: 'Grok 4', provider: 'xAI', context: 10000000 },
+  { id: 'cohere/command-r7', label: 'Command R7', provider: 'Cohere', context: 128000 },
 ];
 
 export default function ProfileChat(props: ProfileChatProps) {
@@ -118,6 +140,9 @@ export default function ProfileChat(props: ProfileChatProps) {
   const [size, setSize] = createSignal({ width: 720, height: 620 });
   const [sessionId, setSessionId] = createSignal<string | null>(null);
   const [modelInfo, setModelInfo] = createSignal({ name: 'Qwen3.6-27B-FP8', context: 262111 });
+  const [showModelPicker, setShowModelPicker] = createSignal(false);
+  const [modelSearch, setModelSearch] = createSignal('');
+  const [savingModel, setSavingModel] = createSignal(false);
   const [showSlash, setShowSlash] = createSignal(false);
   const [slashFilter, setSlashFilter] = createSignal('');
 
@@ -234,12 +259,8 @@ export default function ProfileChat(props: ProfileChatProps) {
       }
       return true;
     }
-    if (cmd.startsWith('/model ')) {
-      const model = cmd.slice(7).trim();
-      if (model) {
-        setModelInfo(prev => ({ ...prev, name: model }));
-        setMessages(prev => [...prev, { role: 'assistant', content: `Model set to **${model}**.` }]);
-      }
+    if (cmd === '/model' || cmd.startsWith('/model ')) {
+      setShowModelPicker(true);
       return true;
     }
     if (cmd === '/status') {
@@ -324,6 +345,59 @@ export default function ProfileChat(props: ProfileChatProps) {
     } catch {
       console.warn(`[ProfileChat:${props.profileName}] fetchModelInfo failed`);
     }
+  }
+
+  async function loadConfig() {
+    try {
+      const res = await fetch(apiUrl(`/api/hermes/profiles/config/raw?name=${encodeURIComponent(props.profileName)}`));
+      if (res.ok) {
+        const data = await res.json();
+        const yaml = data.yaml;
+        const modelMatch = yaml.match(/^model:\s*\n\s+default:\s+(.+)/m);
+        if (modelMatch) {
+          setModelInfo(prev => ({ ...prev, name: modelMatch[1].trim() }));
+        }
+        const ctxMatch = yaml.match(/context_length:\s*(\d+)/);
+        if (ctxMatch) {
+          setModelInfo(prev => ({ ...prev, context: parseInt(ctxMatch[1]) }));
+        }
+      }
+    } catch (e) {
+      console.warn(`[ProfileChat] Failed to load config`, e);
+    }
+  }
+
+  async function saveModel(modelId: string) {
+    setSavingModel(true);
+    try {
+      const getRes = await fetch(apiUrl(`/api/hermes/profiles/config/raw?name=${encodeURIComponent(props.profileName)}`));
+      let yaml = '';
+      if (getRes.ok) {
+        const data = await getRes.json();
+        yaml = data.yaml;
+      }
+      if (yaml.includes('model:')) {
+        if (yaml.includes('default:')) {
+          yaml = yaml.replace(/^(\s+)default:\s.*$/m, `$1default: ${modelId}`);
+        } else {
+          yaml = yaml.replace(/^model:\s*$/m, `model:\n  default: ${modelId}`);
+        }
+      } else {
+        yaml = `model:\n  default: ${modelId}\n` + yaml;
+      }
+      const putRes = await fetch(apiUrl(`/api/hermes/profiles/config/raw?name=${encodeURIComponent(props.profileName)}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yaml_text: yaml }),
+      });
+      if (putRes.ok) {
+        setModelInfo(prev => ({ ...prev, name: modelId }));
+      }
+    } catch (e) {
+      console.warn(`[ProfileChat] Failed to save model`, e);
+    }
+    setSavingModel(false);
+    setShowModelPicker(false);
   }
 
   // ── Drag ──
@@ -643,6 +717,7 @@ export default function ProfileChat(props: ProfileChatProps) {
     }
 
     fetchModelInfo();
+    loadConfig();
   });
 
   onCleanup(() => {
@@ -657,6 +732,22 @@ export default function ProfileChat(props: ProfileChatProps) {
   });
 
   // ── Render ──
+
+  function groupedModels() {
+    const search = modelSearch().toLowerCase();
+    const filtered = search
+      ? AVAILABLE_MODELS.filter(m => m.label.toLowerCase().includes(search) || m.id.toLowerCase().includes(search))
+      : AVAILABLE_MODELS;
+    const groups: { provider: string; models: ModelEntry[] }[] = [];
+    const seen = new Set<string>();
+    for (const m of filtered) {
+      if (!seen.has(m.provider)) {
+        seen.add(m.provider);
+        groups.push({ provider: m.provider, models: filtered.filter(x => x.provider === m.provider) });
+      }
+    }
+    return groups;
+  }
 
   return (
     <Show when={isOpen()}>
@@ -812,6 +903,85 @@ export default function ProfileChat(props: ProfileChatProps) {
             </div>
           </Show>
         </div>
+
+        <Show when={showModelPicker()}>
+          <div
+            class="fixed inset-0 z-[1000001] bg-black/60 flex items-center justify-center"
+            onClick={() => setShowModelPicker(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setShowModelPicker(false); }}
+            tabIndex={-1}
+          >
+            <div
+              class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-[520px] max-h-[640px] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+                <h2 class="text-lg font-semibold">Select Model</h2>
+                <button
+                  onClick={() => setShowModelPicker(false)}
+                  class="text-zinc-400 hover:text-zinc-200 text-xl leading-none"
+                >✕</button>
+              </div>
+
+              <div class="px-5 py-3">
+                <input
+                  class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-emerald-500 placeholder-zinc-500"
+                  placeholder="Search models..."
+                  value={modelSearch()}
+                  onInput={(e) => setModelSearch((e.target as HTMLInputElement).value)}
+                />
+              </div>
+
+              <div class="flex-1 overflow-y-auto px-5 pb-4">
+                <Show when={!savingModel()} fallback={
+                  <div class="flex items-center justify-center py-12 text-zinc-400 text-sm">
+                    <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Saving model...
+                  </div>
+                }>
+                  <For each={groupedModels()}>
+                    {(group) => (
+                      <div>
+                        <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-4 mb-2">{group.provider}</div>
+                        <For each={group.models}>
+                          {(model) => {
+                            const isCurrent = model.id === modelInfo().name;
+                            return (
+                              <div
+                                class={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-sm ${
+                                  isCurrent
+                                    ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-700/50'
+                                    : 'text-zinc-300 hover:bg-zinc-800'
+                                }`}
+                                onClick={() => saveModel(model.id)}
+                              >
+                                <div class="flex flex-col">
+                                  <span>{model.label}</span>
+                                  <span class="text-[11px] text-zinc-500 font-mono">{model.id}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                  <span class="text-[11px] text-zinc-500">{Math.floor(model.context / 1000)}k</span>
+                                  <Show when={isCurrent}>
+                                    <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </Show>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    )}
+                  </For>
+                </Show>
+              </div>
+            </div>
+          </div>
+        </Show>
       </Portal>
     </Show>
   );
