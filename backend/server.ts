@@ -1468,6 +1468,16 @@ async function handleGatewayProxy(req: Request, pathname: string): Promise<Respo
     }
   }
 
+  // Default/no-profile: read API_SERVER_KEY from root ~/.hermes/.env
+  // (HERMES_GATEWAY_TOKEN is the gateway's own auth, not the API key clients use)
+  if (!profileName || authKey === GATEWAY_AUTH) {
+    try {
+      const rootEnv = readFileSync(`${process.env.HOME || '/home/don'}/.hermes/.env`, 'utf-8');
+      const keyMatch = rootEnv.match(/^API_SERVER_KEY=(.+)/m);
+      if (keyMatch) authKey = keyMatch[1].trim();
+    } catch (_) {}
+  }
+
   const targetUrl = `http://${targetHost}:${targetPort}${targetPath}`;
 
   // Build proxied headers — strip routing headers, add auth
