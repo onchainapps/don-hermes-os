@@ -1,7 +1,7 @@
 {
   "name": "don-os-frontend",
-  "version": "0.1.0",
-  "description": "Don OS Dashboard — SolidJS+Vite frontend for Hermes Agent",
+  "version": "0.1.1",
+  "description": "Don OS Dashboard \u2014 SolidJS+Vite frontend for Hermes Agent",
   "private": true,
   "type": "module",
   "bin": {

@@ -1,17 +1,23 @@
 {
   "name": "don-hermes-os",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Hermes Agent dashboard with per-profile gateway proxy",
   "scripts": {
     "dev:frontend": "cd frontend && bun run dev",
     "dev:backend": "cd backend && bun run dev",
     "dev": "bun run dev:backend & bun run dev:frontend",
-    "build": "cd frontend && bun run build",
+    "build": "bash scripts/upgrade.sh",
+    "build:fast": "cd frontend && bun run build",
     "start": "cd backend && bun run server.ts",
     "setup": "node scripts/setup.mjs",
     "setup:ci": "node scripts/setup.mjs --ci",
     "package:frontend": "cd frontend && npm pack",
-    "package:backend": "cd backend && npm pack"
+    "package:backend": "cd backend && npm pack",
+    "deploy": "npm run build && npm run package:backend && npm run package:frontend && npm install -g ./backend/*.tgz ./frontend/*.tgz && pm2 restart don-os-backend don-os-dashboard --update-env",
+    "upgrade": "npm run deploy",
+    "bump:patch": "bash scripts/upgrade.sh --bump-patch",
+    "bump:minor": "bash scripts/upgrade.sh --bump-minor",
+    "bump:major": "bash scripts/upgrade.sh --bump-major"
   }
 }

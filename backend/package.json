@@ -1,7 +1,7 @@
 {
   "name": "don-os-backend",
-  "version": "0.1.0",
-  "description": "Don OS Backend — Bun+Elysia API server with Hermes integration",
+  "version": "0.1.1",
+  "description": "Don OS Backend \u2014 Bun+Elysia API server with Hermes integration",
   "private": true,
   "type": "module",
   "bin": {
