@@ -13,3 +13,6 @@ dist/
 notes/
 # Build artifacts
 *.tgz
+
+# Video assets (dev work, not source)
+video/
