@@ -8,3 +8,8 @@ dist/
 .env.local
 *.log
 .DS_Store
+
+# Notes/plans/docs — not part of source
+notes/
+# Build artifacts
+*.tgz
