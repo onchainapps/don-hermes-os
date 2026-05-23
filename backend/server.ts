@@ -346,9 +346,22 @@ async function handleRequest(req: Request): Response {
   const pathname = url.pathname;
   const method = req.method;
 
-  // Simple health check for tests and monitoring
+  // Health check: verifies DB connectivity and gateway reachability
   if (pathname === '/health') {
-    return jsonOk({ status: 'ok', service: 'don-os-backend', port: PORT, gateway: `${GATEWAY_HOST}:${GATEWAY_PORT}` });
+    let dbOk = false;
+    try {
+      const db = new Database(HERMES_STATE_DB);
+      db.query('SELECT 1').get();
+      db.close();
+      dbOk = true;
+    } catch {}
+    let gwOk = false;
+    try {
+      const r = await fetch(`http://${GATEWAY_HOST}:${GATEWAY_PORT}/health`, { signal: AbortSignal.timeout(3000) });
+      gwOk = r.ok;
+    } catch {}
+    const status = dbOk && gwOk ? 'ok' : dbOk ? 'degraded' : 'unhealthy';
+    return jsonOk({ status, db: dbOk, gateway: gwOk, service: 'don-os-backend', port: PORT });
   }
 
   // API: version info
