@@ -30,7 +30,6 @@ interface Message {
   };
 }
 
-let _sending = false;
 
 const SLASH_COMMANDS = [
   { cmd: '/help', desc: 'Show available commands' },
@@ -87,6 +86,7 @@ export default function ProfileChat(props: ProfileChatProps) {
   const [reconnectAttempts, setReconnectAttempts] = createSignal(0);
   const MAX_RECONNECT = 5;
   const RECONNECT_BASE_MS = 500;
+  const [_sending, _setSending] = createSignal(false);
   const pendingTool: { id: string; name: string; startTime: number }[] = [];
   const [isMinimized, setIsMinimized] = createSignal(false);
   const [position, setPosition] = createSignal({
@@ -430,7 +430,14 @@ export default function ProfileChat(props: ProfileChatProps) {
     log('Closing profile chat');
     setIsOpen(false);
     setIsMinimized(false);
-    window.dispatchEvent(new CustomEvent('profile-chat-close', { detail: { id: props.profileId } }));
+    // Defer the event dispatch until the current synchronous frame completes
+    // so the Portal/Show tear-down from setIsOpen(false) is fully applied
+    // before handleCloseProfileChat in App.tsx runs and mutates openProfileChats.
+    // Without this, the synchronous setOpenProfileChats fires while the Portal
+    // is still mounted, causing a re-render conflict that cascades to all instances.
+    queueMicrotask(() => {
+      window.dispatchEvent(new CustomEvent('profile-chat-close', { detail: { id: props.profileId } }));
+    });
   };
 
   // ── Send message (streaming via Runs API) ──
@@ -462,14 +469,14 @@ export default function ProfileChat(props: ProfileChatProps) {
       // Other slash commands are handled after the isStreaming check
     }
 
-    if (_sending) return;
-    _sending = true;
+    if (_sending()) return;
+    _setSending(true);
 
     // Handle slash commands (non-stop)
     if (text.startsWith('/')) {
       setInput('');
       const handled = await handleSlashCommand(text);
-      if (handled) { _sending = false; return; }
+      if (handled) { _setSending(false); return; }
     }
 
     log('Sending message', { text });
@@ -718,7 +725,7 @@ export default function ProfileChat(props: ProfileChatProps) {
         });
       }
     } finally {
-      _sending = false;
+      _setSending(false);
       setIsStreaming(false);
       stopThinkingAnimation();
       setReconnectAttempts(0);

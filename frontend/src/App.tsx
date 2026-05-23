@@ -1,5 +1,5 @@
 import { apiUrl } from './lib/api-base';
-import { createSignal, onMount, onCleanup, For, Show, Index, lazy, ErrorBoundary } from 'solid-js';
+import { createSignal, onMount, onCleanup, For, Show, lazy, ErrorBoundary } from 'solid-js';
 
 
 import MonacoEditor from './components/MonacoEditor';
@@ -167,9 +167,13 @@ export default function App() {
     // Listen for ProfileChat close events to remove from open list
     const handleCloseProfileChat = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.id) {
-        setOpenProfileChats(prev => prev.filter(p => p.id !== detail.id));
-      }
+      const id = detail?.id;
+      // Guard: silently ignore if detail has no id, or the id is not in the list
+      if (!id) return;
+      setOpenProfileChats(prev => {
+        if (!prev.find(p => p.id === id)) return prev;
+        return prev.filter(p => p.id !== id);
+      });
     };
     window.addEventListener('profile-chat-close', handleCloseProfileChat);
 
@@ -414,16 +418,16 @@ export default function App() {
       />
 
       {/* ProfileChat instances - rendered inside main layout with fixed position */}
-      <Index each={openProfileChats()}>
+      <For each={openProfileChats()}>
         {(chat) => (
           <ProfileChat
-            profileId={chat().id}
-            profileName={chat().name}
-            gatewayPort={chat().gatewayPort}
-            apiKey={chat().apiKey}
+            profileId={chat.id}
+            profileName={chat.name}
+            gatewayPort={chat.gatewayPort}
+            apiKey={chat.apiKey}
           />
         )}
-      </Index>
+      </For>
 
       {/* Cron panel overlay - shown when triggered from profile */}
       <Show when={cronPanelProfile()}>
