@@ -67,14 +67,6 @@ function detectGpu() {
   } catch { return []; }
 }
 
-function detectHermesProfiles() {
-  if (!existsSync(PROFILES_DIR)) return [];
-  return readdirSync(PROFILES_DIR).filter(name => {
-    const dir = `${PROFILES_DIR}/${name}`;
-    return existsSync(dir) && existsSync(`${dir}/.env`);
-  });
-}
-
 // ═══════════════════════════════════════════════════════════
 //  GENERATORS
 // ═══════════════════════════════════════════════════════════
