@@ -13,12 +13,12 @@
  * Run: bun run server.ts
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, realpathSync } from 'fs';
 import { join } from 'path';
 import { cpus, freemem, totalmem, loadavg, uptime, hostname } from 'os';
 import { randomBytes } from 'crypto';
 import YAML from 'yaml';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { Database } from 'bun:sqlite';
 import { generateProfileEnv } from '../scripts/setup.mjs';
 
@@ -1317,12 +1317,118 @@ async function handleRequest(req: Request): Response {
 
   }
   
+  // Project search API
+  if (pathname === '/api/search' && method === 'GET') {
+    try {
+      const query = url.searchParams.get('query') || '';
+      const useRegex = url.searchParams.get('regex') === 'true';
+      const caseSensitive = url.searchParams.get('caseSensitive') === 'true';
+      const searchPath = url.searchParams.get('path') || '';
+
+      if (!query) return jsonErr(400, 'query required');
+      if (query.length > 5000) return jsonErr(413, 'query too long');
+
+      const results: { file: string; line: number; column: number; text: string }[] = [];
+      const MAX_RESULTS = 100;
+
+      const hasRg = (() => {
+        try { execFileSync('which', ['rg'], { stdio: 'ignore' }); return true; }
+        catch { return false; }
+      })();
+
+      if (hasRg) {
+        const args: string[] = ['--json', '-n'];
+        if (!caseSensitive) args.push('-i');
+        if (useRegex) args.push('--engine', 'auto');
+        else args.push('-F');
+        args.push('--max-count', String(MAX_RESULTS));
+        args.push(query, searchPath);
+
+        const output = execFileSync('rg', args, { timeout: 10000, maxBuffer: 10 * 1024 * 1024 }).toString();
+        for (const line of output.trim().split('\n')) {
+          if (!line) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.type === 'match') {
+              results.push({
+                file: parsed.data.path.text,
+                line: parsed.data.line_number,
+                column: (parsed.data.submatches[0]?.start ?? 0) + 1,
+                text: (parsed.data.lines.text || '').substring(0, 5000),
+              });
+              if (results.length >= MAX_RESULTS) break;
+            }
+          } catch {}
+        }
+      } else {
+        const extensions = ['.ts', '.tsx', '.js', '.jsx', '.md', '.json', '.env'];
+        const scanDir = (dir: string) => {
+          if (results.length >= MAX_RESULTS) return;
+          let entries: string[];
+          try { entries = readdirSync(dir); } catch { return; }
+          for (const entry of entries) {
+            if (results.length >= MAX_RESULTS) return;
+            const fullPath = join(dir, entry);
+            let st: any;
+            try { st = statSync(fullPath); } catch { continue; }
+            if (st.isDirectory()) {
+              if (entry.startsWith('.') || entry === 'node_modules') continue;
+              scanDir(fullPath);
+            } else if (st.isFile()) {
+              const dotIdx = entry.lastIndexOf('.');
+              const ext = dotIdx >= 0 ? entry.slice(dotIdx) : '';
+              if (entry.includes('.env')) {
+                // .env files are included regardless
+              } else if (!extensions.includes(ext)) continue;
+              try {
+                const content = readFileSync(fullPath, 'utf-8');
+                const lines = content.split('\n');
+                for (let i = 0; i < lines.length && results.length < MAX_RESULTS; i++) {
+                  let found = false;
+                  if (useRegex) {
+                    try {
+                      const flags = caseSensitive ? 'g' : 'gi';
+                      const re = new RegExp(query, flags);
+                      const match = re.exec(lines[i]);
+                      if (match) {
+                        results.push({ file: fullPath, line: i + 1, column: (match.index ?? 0) + 1, text: lines[i].substring(0, 5000) });
+                        found = true;
+                      }
+                    } catch {}
+                  } else {
+                    const idx = caseSensitive ? lines[i].indexOf(query) : lines[i].toLowerCase().indexOf(query.toLowerCase());
+                    if (idx >= 0) {
+                      results.push({ file: fullPath, line: i + 1, column: idx + 1, text: lines[i].substring(0, 5000) });
+                      found = true;
+                    }
+                  }
+                }
+              } catch {}
+            }
+          }
+        };
+        scanDir(searchPath);
+      }
+      return jsonOk({ results });
+    } catch (e: any) {
+      return jsonErr(500, e.message);
+    }
+
+  }
+
   // Git status API
   if (pathname === '/api/git/status' && method === 'GET') {
     try {
       const repo = decodeURIComponent(url.searchParams.get('repo') || '');
-      const output = execSync(`git -C ${repo} status --porcelain 2>/dev/null || echo ""`, { timeout: 5000 }).toString();
-      const branches = execSync(`git -C ${repo} branch --show-current 2>/dev/null || echo "detached"`, { timeout: 5000 }).toString().trim();
+      const home = process.env.HOME || '/home/don';
+      const devDir = join(home, 'dev');
+      const resolvedRepo = (() => { try { return realpathSync(repo); } catch { return ''; } })();
+      const resolvedDev = (() => { try { return realpathSync(devDir); } catch { return devDir; } })();
+      if (!repo || !repo.startsWith('/') || !resolvedRepo.startsWith(resolvedDev + '/')) {
+        return jsonErr(400, 'Invalid repo path');
+      }
+      const output = execFileSync('git', ['-C', repo, 'status', '--porcelain'], { timeout: 5000 }).toString();
+      const branchOutput = execFileSync('git', ['-C', repo, 'branch', '--show-current'], { timeout: 5000 }).toString().trim();
       const staged: string[] = [];
       const unstaged: string[] = [];
       for (const line of output.trim().split('\n')) {
@@ -1332,7 +1438,7 @@ async function handleRequest(req: Request): Response {
         if (status[0] !== ' ') staged.push(file);
         else unstaged.push(file);
       }
-      return jsonOk({ branch: branches, staged, unstaged });
+      return jsonOk({ branch: branchOutput || 'detached', staged, unstaged });
     } catch (e: any) {
       return jsonErr(500, e.message);
     }
