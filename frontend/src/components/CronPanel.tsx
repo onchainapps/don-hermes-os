@@ -38,31 +38,33 @@ export default function CronPanel(props: CronPanelProps) {
   const [newSchedule, setNewSchedule] = createSignal('');
   const [newPrompt, setNewPrompt] = createSignal('');
   const [newDeliver, setNewDeliver] = createSignal('local');
+  let _refreshing = false;
 
   const fetchJobs = () => {
+    if (_refreshing) return;
+    _refreshing = true;
     setLoading(true);
     fetch(cronUrl(''), { headers: cronHeaders() })
       .then(r => r.json())
       .then(data => {
         setJobs(data.jobs || []);
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {})
+      .finally(() => {
+        setLoading(false);
+        _refreshing = false;
+      });
   };
-
-  let refreshInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
     fetchJobs();
-    refreshInterval = setInterval(fetchJobs, 15000);
   });
 
-  onCleanup(() => clearInterval(refreshInterval));
-
   const action = (endpoint: string, method: string = 'POST', body?: any) => {
-    fetch(endpoint, {
+    const path = endpoint.replace('/api/jobs', '');
+    fetch(cronUrl(path), {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: cronHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     })
       .then(r => r.json())
@@ -105,6 +107,20 @@ export default function CronPanel(props: CronPanelProps) {
           <span class="text-[10px] font-bold tracking-wider" style={{ color: '#00f3ff' }}>
             CRON JOBS
           </span>
+          <button
+            onClick={() => { if (!_refreshing) fetchJobs(); }}
+            disabled={_refreshing || loading()}
+            class="px-2 py-1 text-[10px] font-bold tracking-wider cursor-pointer transition-all"
+            style={{
+              background: _refreshing || loading() ? 'rgba(0,243,255,0.04)' : 'rgba(0,243,255,0.08)',
+              color: '#00f3ff',
+              border: '1px solid rgba(0,243,255,0.2)',
+              cursor: _refreshing || loading() ? 'default' : 'pointer',
+              opacity: _refreshing || loading() ? 0.5 : 1,
+            }}
+          >
+            ↻ REFRESH
+          </button>
           <Show when={props.profile}>
             <span class="text-[9px] font-mono px-1.5 py-0.5 rounded ml-2" style={{
               background: 'rgba(0,243,255,0.1)',
