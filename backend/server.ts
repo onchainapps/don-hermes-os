@@ -27,7 +27,6 @@ const GATEWAY_HOST = process.env.GATEWAY_HOST || '127.0.0.1';
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || '8642');
 const GATEWAY_AUTH = process.env.GATEWAY_AUTH || process.env.HERMES_GATEWAY_TOKEN || '';
 const PROJECT_NAME = process.env.PROJECT_NAME || 'don-os-backend';
-const DASHBOARD_AUTH_TOKEN = process.env.DASHBOARD_AUTH_TOKEN || '';
 
 // ── WebSocket handlers (Bun native) ─────────────────────────────────────────────────────────────────────
 const chatRunners = new Map<Bun.ServerWebSocket, {
@@ -230,14 +229,6 @@ async function handleTerminalMessage(ws: Bun.ServerWebSocket, msg: string | Arra
 const HERMES_HOME = join(process.env.HOME || '/home/don', '.hermes');
 const CONFIG_PATH = join(HERMES_HOME, 'config.yaml');
 const ENV_PATH = join(HERMES_HOME, '.env');
-const LOGS_DIR = join(HERMES_HOME, 'logs');
-
-const LOG_FILES: Record<string, string> = {
-  agent: 'agent.log',
-  gateway: 'gateway.log',
-  errors: 'errors.log',
-};
-
 let editorContext = { filePath: '', fileName: '', language: '', projectRoot: '', updatedAt: 0 };
 
 function getStats() {
@@ -274,29 +265,6 @@ function getStats() {
       hostname: hostname(),
     },
   };
-}
-
-function sqlEscape(val: any) {
-  if (val === null || val === undefined) return 'NULL';
-  return "'" + String(val).replace(/'/g, "''").replace(/\\/g, '\\\\') + "'";
-}
-
-function sanitizeInt(val: string | null, fallback: number, min: number, max: number) {
-  const n = parseInt(val || '', 10);
-  if (isNaN(n)) return fallback;
-  return Math.max(min, Math.min(max, n));
-}
-
-function sqliteQuery(dbPath: string, sql: string) {
-  try {
-    const result = execSync(`sqlite3 -json ${JSON.stringify(dbPath)} ${JSON.stringify(sql)}`, {
-      timeout: 5000,
-      encoding: 'utf-8',
-    });
-    return JSON.parse(result || '[]');
-  } catch (e) {
-    return [];
-  }
 }
 
 function tailFile(filePath: string, lines: number): string[] {
