@@ -20,6 +20,7 @@ import { randomBytes } from 'crypto';
 import YAML from 'yaml';
 import { execSync } from 'child_process';
 import { Database } from 'bun:sqlite';
+import { generateProfileEnv } from '../scripts/setup.mjs';
 
 const PORT = parseInt(process.env.PORT || '3001');
 const HERMES_STATE_DB = process.env.HERMES_STATE_DB || join(process.env.HOME || '/home/don', '.hermes/state.db');
@@ -657,29 +658,7 @@ async function handleRequest(req: Request): Response {
                 }
               }
 
-              writeFileSync(newEnvPath, [
-                '#API SERVER SETTINGS',
-                'API_SERVER_ENABLED=true',
-                'API_SERVER_HOST=0.0.0.0',
-                `API_SERVER_PORT=${newPort}`,
-                `API_SERVER_KEY=${newApiKey}`,
-                `API_SERVER_CORS_ORIGINS=${corsOrigins}`,
-                'API_SERVER_CORS_ALLOWED_HEADERS=*',
-                'API_SERVER_CORS_EXPOSE_HEADERS=*',
-                '',
-                '# COMMON SETTINGS',
-                'LLM_MODEL=',
-                'DEFAULT_MODEL=',
-                'TERMINAL_TIMEOUT=60',
-                'TERMINAL_LIFETIME_SECONDS=300',
-                'BROWSER_SESSION_TIMEOUT=300',
-                'BROWSER_INACTIVITY_TIMEOUT=120',
-                '',
-                '# GATEWAY',
-                'GATEWAY_HOST=127.0.0.1',
-                'GATEWAY_PORT=8642',
-                'GATEWAY_AUTH=',
-              ].join('\n') + '\n');
+              writeFileSync(newEnvPath, generateProfileEnv(localIp, newPort, newApiKey, corsPortsNt));
             }
             if (description) {
               const configPath = `${profileDir}/config.yaml`;

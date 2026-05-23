@@ -71,7 +71,7 @@ function detectGpu() {
 //  GENERATORS
 // ═══════════════════════════════════════════════════════════
 
-function generateProfileEnv(localIp, port, apiKey, corsPorts = ['3001', '3002']) {
+export function generateProfileEnv(localIp, port, apiKey, corsPorts = ['3001', '3002']) {
   // Generate CORS origins for each port + IP combination
   const ips = [localIp, 'localhost', '127.0.0.1'];
   const corsOrigins = [];
