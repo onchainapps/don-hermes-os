@@ -22,6 +22,7 @@ import { execSync } from 'child_process';
 import { Database } from 'bun:sqlite';
 import { generateProfileEnv } from '../scripts/setup.mjs';
 
+const MAX_BODY_SIZE = 1_000_000; // 1MB
 const PORT = parseInt(process.env.PORT || '3001');
 const HERMES_STATE_DB = process.env.HERMES_STATE_DB || join(process.env.HOME || '/home/don', '.hermes/state.db');
 const GATEWAY_HOST = process.env.GATEWAY_HOST || '127.0.0.1';
@@ -268,6 +269,12 @@ function getStats() {
   };
 }
 
+async function readBody(req: Request): Promise<string> {
+  const len = parseInt(req.headers.get('content-length') || '0', 10);
+  if (len > MAX_BODY_SIZE) throw new Error('Request body too large (max 1MB)');
+  return await readBody(req);
+}
+
 function tailFile(filePath: string, lines: number): string[] {
   if (!existsSync(filePath)) return [];
   try {
@@ -405,7 +412,7 @@ async function handleRequest(req: Request): Response {
     if (pathname === '/api/hermes/config' && method === 'PUT') {
       {
         try {
-          const body = JSON.parse(await req.text());
+          const body = JSON.parse(await readBody(req));
           if (!body.key || typeof body.key !== 'string') {
             return jsonErr(400, 'key required');
           }
@@ -448,7 +455,7 @@ async function handleRequest(req: Request): Response {
     if (pathname === '/api/hermes/config/raw' && method === 'PUT') {
       {
         try {
-          const body = JSON.parse(await req.text());
+          const body = JSON.parse(await readBody(req));
           if (!body.yaml_text) throw new Error('yaml_text required');
           YAML.parse(body.yaml_text); 
           writeFileSync(CONFIG_PATH, body.yaml_text);
@@ -540,7 +547,7 @@ async function handleRequest(req: Request): Response {
       if (pathname === '/api/hermes/profiles/create' && method === 'POST') {
         {
           try {
-            const body = JSON.parse(await req.text());
+            const body = JSON.parse(await readBody(req));
             if (!body.name) {
               return jsonErr(400, 'Name required');
             }
@@ -743,7 +750,7 @@ async function handleRequest(req: Request): Response {
       if (pathname === '/api/hermes/profiles/start' && method === 'POST') {
         {
           try {
-            const body = JSON.parse(await req.text());
+            const body = JSON.parse(await readBody(req));
             if (!body.name) {
               return jsonErr(400, 'Name required');
             }
@@ -798,7 +805,7 @@ async function handleRequest(req: Request): Response {
       if (pathname === '/api/hermes/profiles/stop' && method === 'POST') {
         {
           try {
-            const body = JSON.parse(await req.text());
+            const body = JSON.parse(await readBody(req));
             if (!body.name) {
               return jsonErr(400, 'Name required');
             }
@@ -905,7 +912,7 @@ async function handleRequest(req: Request): Response {
         try {
           const name = url.searchParams.get('name');
           if (!name) { return jsonErr(400, 'Name required'); return; }
-          const body = JSON.parse(await req.text());
+          const body = JSON.parse(await readBody(req));
           if (!body.yaml_text) throw new Error('yaml_text required');
           const configPath = name === 'default'
             ? join(HERMES_HOME, 'config.yaml')
@@ -939,7 +946,7 @@ async function handleRequest(req: Request): Response {
         const envPath = name === 'default'
           ? join(HERMES_HOME, '.env')
           : join(HERMES_HOME, 'profiles', name, '.env');
-        const body = JSON.parse(await req.text());
+        const body = JSON.parse(await readBody(req));
         writeFileSync(envPath, body.env ?? '');
         return jsonOk({ ok: true });
       }
@@ -961,7 +968,7 @@ async function handleRequest(req: Request): Response {
         const soulPath = name === 'default'
           ? join(HERMES_HOME, 'SOUL.md')
           : join(HERMES_HOME, 'profiles', name, 'SOUL.md');
-        const body = JSON.parse(await req.text());
+        const body = JSON.parse(await readBody(req));
         if (body.content !== undefined) writeFileSync(soulPath, body.content);
         return jsonOk({ ok: true });
       }
@@ -996,7 +1003,7 @@ async function handleRequest(req: Request): Response {
     if (pathname === '/api/hermes/env' && method === 'PUT') {
       {
         try {
-          const body = JSON.parse(await req.text());
+          const body = JSON.parse(await readBody(req));
           let envText = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, 'utf-8') : '';
           const lines = envText.split('\n');
           const prefix = body.key + '=';
@@ -1039,7 +1046,7 @@ async function handleRequest(req: Request): Response {
     if (method === 'GET') return jsonOk(editorContext);
     else if (method === 'POST') {
       try {
-        const ctx = JSON.parse(await req.text());
+        const ctx = JSON.parse(await readBody(req));
         editorContext = { ...editorContext, ...ctx, updatedAt: Date.now() };
         return jsonOk(editorContext);
       } catch { return jsonErr(400, 'Invalid JSON'); }
@@ -1212,7 +1219,7 @@ async function handleRequest(req: Request): Response {
       if (pathname === '/api/jobs' && method === 'POST') {
         {
           try {
-            const body = JSON.parse(await req.text());
+            const body = JSON.parse(await readBody(req));
             const args = [
               'cron', 'create',
               '--name', body.name,
@@ -1369,7 +1376,7 @@ async function handleRequest(req: Request): Response {
 
       // POST requests carry a body; GET requests do not
       if (method === 'POST') {
-        proxyOpts.body = await req.text();
+        proxyOpts.body = await readBody(req);
         proxyHeaders['Content-Type'] = 'application/json';
       }
 
