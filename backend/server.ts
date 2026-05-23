@@ -683,7 +683,6 @@ async function handleRequest(req: Request): Response {
                 `API_SERVER_PORT=${newPort}`,
                 `API_SERVER_KEY=${newApiKey}`,
                 `API_SERVER_CORS_ORIGINS=${corsOrigins}`,
-                'API_SERVER_CORS_ALLOW_HEADERS=*',
                 'API_SERVER_CORS_ALLOWED_HEADERS=*',
                 'API_SERVER_CORS_EXPOSE_HEADERS=*',
                 '',

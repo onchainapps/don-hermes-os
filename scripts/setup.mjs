@@ -101,7 +101,6 @@ function generateProfileEnv(localIp, port, apiKey, corsPorts = ['3001', '3002'])
     `API_SERVER_PORT=${port}`,
     `API_SERVER_KEY=${apiKey}`,
     `API_SERVER_CORS_ORIGINS=${corsOrigins}`,
-    'API_SERVER_CORS_ALLOW_HEADERS=*',
     'API_SERVER_CORS_ALLOWED_HEADERS=*',
     'API_SERVER_CORS_EXPOSE_HEADERS=*',
     '',
