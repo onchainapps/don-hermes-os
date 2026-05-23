@@ -37,10 +37,11 @@ export default function ProfileManager() {
   const [configYaml, setConfigYaml] = createSignal('');
   const [configEnv, setConfigEnv] = createSignal('');
   const [configSoul, setConfigSoul] = createSignal('');
-  const [configTab, setConfigTab] = createSignal<'yaml' | 'env' | 'soul'>('yaml');
+  const [configTab, setConfigTab] = createSignal<'yaml' | 'env' | 'soul' | 'cron'>('yaml');
   const [configLoading, setConfigLoading] = createSignal(false);
   const [envLoading, setEnvLoading] = createSignal(false);
   const [soulLoading, setSoulLoading] = createSignal(false);
+  const [cronLoading, setCronLoading] = createSignal(false);
   const [configStatus, setConfigStatus] = createSignal<string | null>(null);
   const [showCreateForm, setShowCreateForm] = createSignal(false);
   
@@ -212,6 +213,13 @@ export default function ProfileManager() {
     const name = configProfile();
     const tab = configTab();
     if (!name) return;
+    if (tab === 'cron') setCronLoading(false); // TBA — nothing to load
+  });
+
+  createEffect(() => {
+    const name = configProfile();
+    const tab = configTab();
+    if (!name) return;
     if (tab === 'yaml') loadConfig(name);
     if (tab === 'env') loadEnv(name);
     if (tab === 'soul') loadSoul(name);
@@ -231,10 +239,14 @@ export default function ProfileManager() {
       if (configTab() === 'yaml') {
         await hermesPut(`/profiles/config/raw?name=${encodeURIComponent(name)}`, { yaml_text: configYaml() });
         setConfigStatus('Saved ✓');
-      } else {
+      } else if (configTab() === 'env') {
         await hermesPut(`/profiles/env?name=${encodeURIComponent(name)}`, { env: configEnv() });
         setConfigStatus('Saved ✓');
+      } else if (configTab() === 'soul') {
+        await hermesPut(`/profiles/soul?name=${encodeURIComponent(name)}`, { content: configSoul() });
+        setConfigStatus('Saved ✓');
       }
+      // cron is TBA — no save action
       setTimeout(() => setConfigStatus(null), 2000);
     } catch (e: any) {
       setConfigStatus(`Error: ${e.message}`);
@@ -674,40 +686,88 @@ export default function ProfileManager() {
               >
                 .env
               </button>}
+              {<button
+                onClick={() => setConfigTab('soul')}
+                class="px-3 py-2 text-[10px] font-bold tracking-wider transition-all"
+                style={{
+                  color: configTab() === 'soul' ? '#00f3ff' : '#555',
+                  'border-bottom': configTab() === 'soul' ? '2px solid #00f3ff' : '2px solid transparent',
+                  background: configTab() === 'soul' ? 'rgba(0,243,255,0.05)' : 'transparent',
+                }}
+              >
+                SOUL.md
+              </button>}
+              {<button
+                onClick={() => setConfigTab('cron')}
+                class="px-3 py-2 text-[10px] font-bold tracking-wider transition-all"
+                style={{
+                  color: configTab() === 'cron' ? '#555' : '#555',
+                  'border-bottom': '2px solid transparent',
+                  background: 'transparent',
+                  opacity: 0.45,
+                  cursor: 'not-allowed',
+                  'text-decoration': 'line-through',
+                }}
+              >
+                CRON (TBA)
+              </button>}
             </div>
 
             {/* Editor */}
             <div class="flex-1 overflow-auto p-4">
-              <Show when={configLoading()} fallback={
-                <Show when={configTab() === 'yaml'} fallback={
-                  <textarea
-                    class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
-                    style={{ color: '#e4e4e7' }}
-                    value={configEnv()}
-                    onInput={(e) => setConfigEnv(e.currentTarget.value)}
-                  />
-                }>
-                  <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                      <span class="text-[10px] text-hermes-text-dim font-mono">{configProfile()}</span>
-                      <button
-                        onClick={formatYaml}
-                        class="px-2 py-1 text-[9px] font-bold border border-hermes-cyan/30 rounded hover:bg-hermes-cyan/10 text-hermes-cyan transition-all"
-                      >
-                        ✎ FORMAT YAML
-                      </button>
+              <Show when={configTab() === 'cron'} fallback={
+                <Show when={configLoading()} fallback={
+                  <Show when={configTab() === 'yaml'} fallback={
+                    <Show when={configTab() === 'soul'} fallback={
+                      <textarea
+                        class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
+                        style={{ color: '#e4e4e7' }}
+                        value={configEnv()}
+                        onInput={(e) => setConfigEnv(e.currentTarget.value)}
+                      />
+                    }>
+                      <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-hermes-text-dim font-mono">SOUL.md — {configProfile()}</span>
+                        </div>
+                        <textarea
+                          class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
+                          style={{ color: '#e4e4e7' }}
+                          value={configSoul()}
+                          onInput={(e) => setConfigSoul(e.currentTarget.value)}
+                        />
+                        <div class="text-[9px] text-hermes-text-dim/50 mt-1">Directly edits ~/.hermes/profiles/{configProfile()}/SOUL.md — press SAVE below to persist.</div>
+                      </div>
+                    </Show>
+                  }>
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-hermes-text-dim font-mono">{configProfile()}</span>
+                        <button
+                          onClick={formatYaml}
+                          class="px-2 py-1 text-[9px] font-bold border border-hermes-cyan/30 rounded hover:bg-hermes-cyan/10 text-hermes-cyan transition-all"
+                        >
+                          ✎ FORMAT YAML
+                        </button>
+                      </div>
+                      <textarea
+                        class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
+                        style={{ color: '#e4e4e7' }}
+                        value={configYaml()}
+                        onInput={(e) => setConfigYaml(e.currentTarget.value)}
+                      />
                     </div>
-                    <textarea
-                      class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
-                      style={{ color: '#e4e4e7' }}
-                      value={configYaml()}
-                      onInput={(e) => setConfigYaml(e.currentTarget.value)}
-                    />
+                  </Show>
+                }>
+                  <div class="flex items-center justify-center py-12">
+                    <div class="text-hermes-cyan text-[10px] font-mono animate-pulse">LOADING...</div>
                   </div>
                 </Show>
               }>
-                <div class="flex items-center justify-center py-12">
-                  <div class="text-hermes-cyan text-[10px] font-mono animate-pulse">LOADING...</div>
+                <div class="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
+                  <div class="text-[32px] opacity-30">🔧</div>
+                  <div class="text-[10px] font-mono text-hermes-text-dim tracking-wider uppercase">CRON TBA</div>
+                  <div class="text-[9px] text-hermes-text-dim/40 max-w-xs text-center leading-relaxed mx-4">Cron job editing will move into this config modal. For now use the separate <span class="text-hermes-cyan">CRON</span> panel on the profile card.</div>
                 </div>
               </Show>
             </div>
