@@ -11,6 +11,7 @@ import { createSignal, createEffect, onMount, onCleanup, For, Show, Index } from
 import { Portal } from 'solid-js/web';
 import MessageContent from '../components/MessageContent';
 import { apiUrl } from '../lib/api-base';
+import { saveSession, loadSession } from '../lib/chat-persist';
 
 interface ProfileChatProps {
   profileId: string;
@@ -27,59 +28,6 @@ interface Message {
     output_tokens: number;
     total_tokens: number;
   };
-}
-
-const DB_NAME = 'don-profile-chat-db';
-const STORE_NAME = 'chat-state';
-
-function getStateKey(profileId: string) {
-  return `profile-chat-${profileId}`;
-}
-
-// Lightweight IndexedDB helpers
-async function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function saveState(profileId: string, data: any) {
-  try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put({ key: getStateKey(profileId), ...data, updatedAt: Date.now() });
-    tx.oncomplete = () => db.close();
-  } catch (e) {
-    console.warn(`[ProfileChat:${profileId}] IndexedDB save failed:`, e);
-  }
-}
-
-async function loadState(profileId: string): Promise<any | null> {
-  try {
-    const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const req = tx.objectStore(STORE_NAME).get(getStateKey(profileId));
-      req.onsuccess = () => {
-        db.close();
-        resolve(req.result || null);
-      };
-      req.onerror = () => {
-        db.close();
-        resolve(null);
-      };
-    });
-  } catch {
-    return null;
-  }
 }
 
 let _sending = false;
@@ -217,11 +165,13 @@ export default function ProfileChat(props: ProfileChatProps) {
   function scheduleSave() {
     if (saveTimeout) clearTimeout(saveTimeout);
     saveTimeout = window.setTimeout(() => {
-      saveState(props.profileId, {
+      const scope = `profile-chat-${props.profileId}`;
+      saveSession(scope, {
+        sessionId: sessionId(),
+        messages: messages(),
+        streaming: isStreaming(),
         position: position(),
         size: size(),
-        messages: messages(),
-        sessionId: sessionId(),
       });
     }, 400);
   }
@@ -821,7 +771,7 @@ export default function ProfileChat(props: ProfileChatProps) {
     log('Mounted', { gatewayPort: props.gatewayPort, profileId: props.profileId });
 
     // Restore persisted state
-    const saved = await loadState(props.profileId);
+    const saved = await loadSession(`profile-chat-${props.profileId}`);
     if (saved) {
       if (saved.position) setPosition(saved.position);
       if (saved.size) setSize(saved.size);

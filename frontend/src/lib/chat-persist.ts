@@ -10,9 +10,11 @@ const DB_VERSION = 3;
 interface PersistedSession {
   scope: string;
   sessionId: string | null;
-  messages: any[]; // Message[] from chat-ui types
+  messages: any[];
   streaming: boolean;
   contextFiles?: { path: string; content: string }[];
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
   updatedAt: number;
 }
 
@@ -48,7 +50,7 @@ function txDone(tx: IDBTransaction): Promise<void> {
  */
 export async function saveSession(
   scope: string,
-  data: Pick<PersistedSession, 'sessionId' | 'messages' | 'streaming' | 'contextFiles'>
+  data: Pick<PersistedSession, 'sessionId' | 'messages' | 'streaming' | 'contextFiles' | 'position' | 'size'>
 ): Promise<void> {
   try {
     const db = await openDb();
