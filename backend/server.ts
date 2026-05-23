@@ -430,7 +430,7 @@ async function handleRequest(req: Request): Response {
       } catch (e: any) {
         return jsonErr(500, e.message);
       }
-      return jsonErr(500, "Internal error");
+
     }
 
     if (pathname === '/api/hermes/config' && method === 'PUT') {
@@ -463,7 +463,7 @@ async function handleRequest(req: Request): Response {
           return jsonErr(500, e.message);
         }
       }
-      return jsonErr(500, "Internal error");
+
     }
 
     if (pathname === '/api/hermes/config/raw' && method === 'GET') {
@@ -473,7 +473,7 @@ async function handleRequest(req: Request): Response {
       } catch (e: any) {
         return jsonErr(500, e.message);
       }
-      return jsonErr(500, "Internal error");
+
     }
 
     if (pathname === '/api/hermes/config/raw' && method === 'PUT') {
@@ -488,7 +488,7 @@ async function handleRequest(req: Request): Response {
           return jsonErr(500, e.message || 'Invalid YAML');
         }
       }
-      return jsonErr(500, "Internal error");
+
     }
 
     // Profile Management
@@ -565,7 +565,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message);
         }
-        return jsonErr(500, "Internal error");
+  
       }
 
       if (pathname === '/api/hermes/profiles/create' && method === 'POST') {
@@ -774,7 +774,7 @@ async function handleRequest(req: Request): Response {
             return jsonErr(500, e.message);
           }
         }
-        return jsonErr(500, "Internal error");
+  
       }
 
       if (pathname === '/api/hermes/profiles/delete' && method === 'DELETE') {
@@ -790,7 +790,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message);
         }
-        return jsonErr(500, "Internal error");
+  
       }
 
       if (pathname === '/api/hermes/profiles/start' && method === 'POST') {
@@ -873,7 +873,7 @@ async function handleRequest(req: Request): Response {
             return jsonErr(500, e.message);
           }
         }
-        return jsonErr(500, "Internal error");
+  
       }
 
       // Profile Details (skills + SOUL.md)
@@ -935,7 +935,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message);
         }
-        return jsonErr(500, "Internal error");
+  
       }
 
       // Profile config raw YAML
@@ -951,7 +951,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message);
         }
-        return jsonErr(500, "Internal error");
+  
       }
 
       if (pathname === '/api/hermes/profiles/config/raw' && method === 'PUT') {
@@ -970,7 +970,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message || 'Invalid YAML');
         }
-        return jsonErr(500, "Internal error");
+  
       }
     }
 
@@ -1043,7 +1043,7 @@ async function handleRequest(req: Request): Response {
       } catch (e: any) {
         return jsonErr(500, e.message);
       }
-      return jsonErr(500, "Internal error");
+
     }
 
     if (pathname === '/api/hermes/env' && method === 'PUT') {
@@ -1068,7 +1068,7 @@ async function handleRequest(req: Request): Response {
           return jsonErr(500, e.message);
         }
       }
-      return jsonErr(500, "Internal error");
+
     }
 
     if (pathname === '/api/hermes/env' && method === 'DELETE') {
@@ -1083,7 +1083,7 @@ async function handleRequest(req: Request): Response {
       } catch (e: any) {
         return jsonErr(500, e.message);
       }
-      return jsonErr(500, "Internal error");
+
     }
   }
 
@@ -1097,7 +1097,7 @@ async function handleRequest(req: Request): Response {
         return jsonOk(editorContext);
       } catch { return jsonErr(400, 'Invalid JSON'); }
     }
-    return jsonErr(500, "Internal error");
+
   }
 
   // Sessions API
@@ -1258,7 +1258,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonOk({ jobs: [] });
         }
-        return jsonErr(500, "Internal error");
+  
       }
       
       // POST /api/jobs (create)
@@ -1279,7 +1279,7 @@ async function handleRequest(req: Request): Response {
             return jsonErr(500, e.message);
           }
         }
-        return jsonErr(500, "Internal error");
+  
       }
       
       // DELETE /api/jobs/:id
@@ -1292,7 +1292,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message);
         }
-        return jsonErr(500, "Internal error");
+  
       }
       
       // POST /api/jobs/:id/pause|resume|run
@@ -1306,7 +1306,7 @@ async function handleRequest(req: Request): Response {
         } catch (e: any) {
           return jsonErr(500, e.message);
         }
-        return jsonErr(500, "Internal error");
+  
       }
       
       return jsonErr(404, `Unknown jobs endpoint: ${pathname}`);
@@ -1337,7 +1337,7 @@ async function handleRequest(req: Request): Response {
     } catch (e: any) {
       return jsonErr(500, e.message);
     }
-    return jsonErr(500, "Internal error");
+
   }
   
   // File tree API
@@ -1360,7 +1360,7 @@ async function handleRequest(req: Request): Response {
     } catch (e: any) {
       return jsonErr(500, e.message);
     }
-    return jsonErr(500, "Internal error");
+
   }
   
   // Git status API
@@ -1382,7 +1382,7 @@ async function handleRequest(req: Request): Response {
     } catch (e: any) {
       return jsonErr(500, e.message);
     }
-    return jsonErr(500, "Internal error");
+
   }
   
   // Project root detection API
@@ -1399,7 +1399,7 @@ async function handleRequest(req: Request): Response {
     } catch (e: any) {
       return jsonErr(500, e.message);
     }
-    return jsonErr(500, "Internal error");
+
   }
   
   // Gateway proxy - forwards requests to Hermes gateway (GET, POST)
