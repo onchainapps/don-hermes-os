@@ -1550,7 +1550,7 @@ async function handleGatewayProxy(req: Request, pathname: string): Promise<Respo
 
 // ─── Bun.serve with native WebSocket ──────────────────────────────────────
 // Bun 1.3.x: ws.url is undefined. Use server.upgrade(req, { data }) to pass pathname.
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
   fetch(req, server) {
     const pathname = new URL(req.url).pathname;
@@ -1593,3 +1593,20 @@ Bun.serve({
 });
 
 console.log(`[${PROJECT_NAME}] Server running on port ${PORT}`);
+
+// ─── Graceful shutdown ──────────────────────────────────────────────────
+function shutdown(signal: string) {
+  console.log(`[${PROJECT_NAME}] Received ${signal}, shutting down gracefully...`);
+  for (const [ws, proc] of terminalProcs) {
+    proc.kill();
+    terminalProcs.delete(ws);
+  }
+  for (const [, runner] of chatRunners) {
+    runner.abort.abort();
+  }
+  chatRunners.clear();
+  server.stop();
+  process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
