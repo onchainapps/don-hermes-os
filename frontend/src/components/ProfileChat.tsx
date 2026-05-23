@@ -82,6 +82,8 @@ async function loadState(profileId: string): Promise<any | null> {
   }
 }
 
+let _sending = false;
+
 const SLASH_COMMANDS = [
   { cmd: '/help', desc: 'Show available commands' },
   { cmd: '/new', desc: 'Start a new conversation' },
@@ -129,7 +131,15 @@ export default function ProfileChat(props: ProfileChatProps) {
     { role: 'assistant', content: `Hello! Profile chat ready for ${props.profileName}.` },
   ]);
   const [input, setInput] = createSignal('');
+  // ── State signals ──
   const [isStreaming, setIsStreaming] = createSignal(false);
+  const [isThinking, setIsThinking] = createSignal(false);
+  const [isReconnecting, setIsReconnecting] = createSignal(false);
+  const [runId, setRunId] = createSignal<string | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = createSignal(0);
+  const MAX_RECONNECT = 5;
+  const RECONNECT_BASE_MS = 500;
+  const pendingTool: { id: string; name: string; startTime: number }[] = [];
   const [isMinimized, setIsMinimized] = createSignal(false);
   const [position, setPosition] = createSignal({
     x: Math.max(60, window.innerWidth - 520),
@@ -186,6 +196,7 @@ export default function ProfileChat(props: ProfileChatProps) {
 
   function startThinkingAnimation() {
     let index = 0;
+    setIsThinking(true);
     setThinkingText(THINKING_PHRASES[index]);
     if (thinkingInterval) clearInterval(thinkingInterval);
     thinkingInterval = window.setInterval(() => {
@@ -194,14 +205,14 @@ export default function ProfileChat(props: ProfileChatProps) {
     }, 1800);
   }
 
-  function stopThinkingAnimation() {
+    function stopThinkingAnimation() {
     if (thinkingInterval) {
       clearInterval(thinkingInterval);
       thinkingInterval = null;
     }
+    setIsThinking(false);
   }
-
-  // ── State persistence ──
+  // ── State persistence ── ──
 
   function scheduleSave() {
     if (saveTimeout) clearTimeout(saveTimeout);
@@ -501,17 +512,14 @@ export default function ProfileChat(props: ProfileChatProps) {
       // Other slash commands are handled after the isStreaming check
     }
 
-    if (isStreaming()) return;
-    if (abortController) {
-      log('Previous stream still active, preventing concurrent send');
-      return;
-    }
+    if (_sending) return;
+    _sending = true;
 
     // Handle slash commands (non-stop)
     if (text.startsWith('/')) {
       setInput('');
       const handled = await handleSlashCommand(text);
-      if (handled) return;
+      if (handled) { _sending = false; return; }
     }
 
     log('Sending message', { text });
@@ -558,9 +566,9 @@ export default function ProfileChat(props: ProfileChatProps) {
       }
 
       const runData = await createRes.json();
-      const runId = runData.run_id;
-      if (!runId) throw new Error('No run_id returned');
-
+      const rId = runData.run_id;
+      if (!rId) throw new Error('No run_id returned');
+      setRunId(rId);
       if (runData.session_id) {
         setSessionId(runData.session_id);
       }
@@ -569,7 +577,7 @@ export default function ProfileChat(props: ProfileChatProps) {
       const streamHeaders: Record<string, string> = { 'Accept': 'text/event-stream' };
       if (props.profileName) streamHeaders['X-Hermes-Profile'] = props.profileName;
 
-      const streamRes = await fetch(`${apiBase}/v1/runs/${runId}/events`, { headers: streamHeaders, signal });
+      const streamRes = await fetch(`${apiBase}/v1/runs/${rId}/events`, { headers: streamHeaders, signal });
       if (!streamRes.ok || !streamRes.body) {
         const errorMsg = `Stream failed: ${streamRes.status}`;
         setMessages(prev => {
@@ -584,67 +592,170 @@ export default function ProfileChat(props: ProfileChatProps) {
       reader = streamRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let userStopped = false;
 
-      streamLoop: while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
+      async function consumeEvents(
+        eventReader: ReadableStreamDefaultReader<Uint8Array>,
+        eventDecoder: TextDecoder
+      ): Promise<boolean> {
+        let innerBuffer = '';
+        while (true) {
+          const { done, value } = await eventReader.read();
+          if (done) { log('Event stream ended'); return true; }
+          innerBuffer += eventDecoder.decode(value, { stream: true });
+          const evtLines = innerBuffer.split('\n');
+          innerBuffer = evtLines.pop() || '';
+          for (const line of evtLines) {
+            if (!line.startsWith('data: ')) continue;
             const data = line.slice(6).trim();
             if (data === '[DONE]') continue;
-            // Check for requestCancelled cancellation event
             if (data.includes('"requestCancelled"') || data.includes('"cancelled"')) {
+              userStopped = true;
               fullContent += '\n\n*Generation cancelled.*';
               setMessages(prev => {
-                const newMessages = [...prev];
-                const lastIndex = newMessages.length - 1;
-                if (newMessages[lastIndex]?.role === 'assistant') {
-                  newMessages[lastIndex] = { ...newMessages[lastIndex], content: fullContent };
+                const newMsgs = [...prev];
+                const lastIdx = newMsgs.length - 1;
+                if (newMsgs[lastIdx]?.role === 'assistant') {
+                  newMsgs[lastIdx] = { ...newMsgs[lastIdx], content: fullContent };
                 }
-                return newMessages;
+                return newMsgs;
               });
-              // Break out of SSE loop — don't wait for more events
-              reader?.cancel().catch(() => {});
-              reader = null;
-              break streamLoop;
+              return true;
             }
             try {
               const event = JSON.parse(data);
-              if (event.event === "message.delta" && event.delta) {
+              if (event.event === 'message.delta' && event.delta) {
                 fullContent += event.delta;
+                setIsThinking(false);
                 setMessages(prev => {
-                  const newMessages = [...prev];
-                  const lastIndex = newMessages.length - 1;
-                  if (newMessages[lastIndex]?.role === 'assistant') {
-                    newMessages[lastIndex] = { ...newMessages[lastIndex], content: newMessages[lastIndex].content + event.delta };
+                  const newMsgs = [...prev];
+                  const lastIdx = newMsgs.length - 1;
+                  if (newMsgs[lastIdx]?.role === 'assistant') {
+                    newMsgs[lastIdx] = { ...newMsgs[lastIdx], content: newMsgs[lastIdx].content + event.delta };
                   }
-                  return newMessages;
+                  return newMsgs;
                 });
               }
-              if (event.event === "run.completed" && event.usage) {
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  const lastIndex = newMessages.length - 1;
-                  if (newMessages[lastIndex]?.role === 'assistant') {
-                    newMessages[lastIndex] = { ...newMessages[lastIndex], usage: event.usage };
-                  }
-                  return newMessages;
-                });
+              if (event.event === 'reasoning.available' && event.text) {
+                setIsThinking(true);
               }
-            } catch (parseErr) {
-              console.warn(`[ProfileChat:${props.profileName}] SSE parse error:`, parseErr);
+              if (event.event === 'tool.started' && (event as any).tool) {
+                log(`Tool started: ${(event as any).tool.name}`);
+              }
+              if (event.event === 'tool.completed' && (event as any).tool) {
+                log(`Tool completed: ${(event as any).tool.name}`);
+              }
+              if (event.event === 'run.completed') {
+                if (event.output) fullContent = event.output;
+                if (event.usage) {
+                  setMessages(prev => {
+                    const newMsgs = [...prev];
+                    const lastIdx = newMsgs.length - 1;
+                    if (newMsgs[lastIdx]?.role === 'assistant') {
+                      newMsgs[lastIdx] = { ...newMsgs[lastIdx], usage: event.usage };
+                    }
+                    return newMsgs;
+                  });
+                }
+                return true;
+              }
+            } catch (e) {
+              console.warn(`[ProfileChat:${props.profileName}] SSE parse error:`, e);
             }
           }
         }
       }
 
+      // ── Reconnect on stream drop ──
+      try {
+        const ok = await consumeEvents(reader!, decoder);
+        reader = null;
+        if (!ok) log('Stream ended without run.completed');
+      } catch (err2: any) {
+        if (userStopped) {
+          log('Stopped by user');
+        } else if (err2?.name === 'AbortError') {
+          log('Stream aborted — attempting reconnect');
+          reader = null;
+          if (rId && !userStopped) {
+            setIsReconnecting(true);
+            let recovered = false;
+            for (let attempt = 0; attempt < MAX_RECONNECT; attempt++) {
+              setReconnectAttempts(attempt);
+              await new Promise(r => setTimeout(r, RECONNECT_BASE_MS * Math.pow(2, attempt)));
+              if (userStopped) break;
+              try {
+                const statusRes = await fetch(`${apiBase}/v1/runs/${rId}`, {
+                  headers: props.profileName ? { 'X-Hermes-Profile': props.profileName } : {},
+                  signal: AbortSignal.timeout(8000),
+                });
+                if (!statusRes.ok) { log('Status poll failed:', statusRes.status); continue; }
+                const statusData = await statusRes.json();
+                if (statusData.status === 'completed') {
+                  log('Run completed during disconnect, using output');
+                  if (statusData.output) {
+                    fullContent += statusData.output;
+                    setMessages(prev => {
+                      const newMsgs = [...prev];
+                      const lastIdx = newMsgs.length - 1;
+                      if (newMsgs[lastIdx]?.role === 'assistant') {
+                        newMsgs[lastIdx] = { ...newMsgs[lastIdx], content: fullContent };
+                      }
+                      return newMsgs;
+                    });
+                  }
+                  if (statusData.usage) {
+                    setMessages(prev => {
+                      const newMsgs = [...prev];
+                      const lastIdx = newMsgs.length - 1;
+                      if (newMsgs[lastIdx]?.role === 'assistant') {
+                        newMsgs[lastIdx] = { ...newMsgs[lastIdx], usage: statusData.usage };
+                      }
+                      return newMsgs;
+                    });
+                  }
+                  recovered = true;
+                  break;
+                }
+                if (statusData.status === 'running') {
+                  const streamRes2 = await fetch(`${apiBase}/v1/runs/${rId}/events`, {
+                    headers: streamHeaders,
+                    signal: AbortSignal.timeout(120000),
+                  });
+                  if (streamRes2.ok && streamRes2.body) {
+                    const ok2 = await consumeEvents(streamRes2.body.getReader(), decoder);
+                    if (ok2) { recovered = true; break; }
+                  }
+                }
+              } catch (pollErr: any) {
+                log('Reconnect error:', pollErr.message || pollErr);
+              }
+            }
+            setIsReconnecting(false);
+            setReconnectAttempts(0);
+            if (!recovered) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last?.role === 'assistant') last.content = fullContent || '*Connection lost. Try resending.*';
+                return updated;
+              });
+            }
+          }
+        } else {
+          log('Stream consumer error', err2);
+          setMessages(prev => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last?.role === 'assistant') last.content = fullContent || '*Stream error.*';
+            return updated;
+          });
+        }
+      }
+
       log('Received response');
     } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      if (err instanceof DOMException && (err as DOMException).name === 'AbortError') {
         log('Request aborted');
       } else {
         const msg = err instanceof Error ? err.message : String(err);
@@ -657,8 +768,10 @@ export default function ProfileChat(props: ProfileChatProps) {
         });
       }
     } finally {
+      _sending = false;
       setIsStreaming(false);
       stopThinkingAnimation();
+      setReconnectAttempts(0);
       if (reader) {
         reader.cancel().catch(() => {});
         reader = null;
@@ -821,14 +934,23 @@ export default function ProfileChat(props: ProfileChatProps) {
                   </div>
                 )}
               </Index>
-              <Show when={isStreaming()}>
-                <div class="text-xs text-zinc-400 flex items-center gap-2 px-1">
+              <Show when={isThinking() || isReconnecting()}>
+                <div class="flex items-center gap-2 px-1 text-xs text-zinc-400">
                   <div class="flex gap-1">
-                    <div class="w-1 h-1 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0ms" />
-                    <div class="w-1 h-1 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 150ms" />
-                    <div class="w-1 h-1 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 300ms" />
+                    <Show when={isStreaming()}>
+                      <div class="w-1 h-1 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0ms" />
+                      <div class="w-1 h-1 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 150ms" />
+                      <div class="w-1 h-1 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 300ms" />
+                    </Show>
+                    <Show when={isReconnecting()}>
+                      <div class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                    </Show>
                   </div>
-                  <span>{thinkingText()}</span>
+                  <span>
+                    <Show when={isReconnecting()} fallback={<span>{thinkingText()}</span>}>
+                      Reconnecting… {reconnectAttempts() > 0 && `(attempt ${reconnectAttempts() + 1}/${MAX_RECONNECT})`}
+                    </Show>
+                  </span>
                 </div>
               </Show>
               <div ref={messagesEndRef} />
