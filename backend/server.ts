@@ -167,7 +167,7 @@ async function handleChatMessage(ws: Bun.ServerWebSocket, msg: string | ArrayBuf
                   data: { type: 'message.complete' }
                 }));
                 log('event_forwarded', { type: 'message.complete' });
-              } else if (eventType === 'tool.start' || eventType === 'tool.result' || eventType === 'tool.started' || eventType === 'tool.completed') {
+              } else if (eventType === 'tool.started' || eventType === 'tool.completed') {
                 ws.send(JSON.stringify({
                   type: 'event',
                   ...context,
@@ -870,7 +870,8 @@ async function handleRequest(req: Request): Response {
           const name = url.searchParams.get('name');
           if (!name) { return jsonErr(400, 'Name required'); return; }
 
-          const profileDir = join(HERMES_HOME, 'profiles', name);
+          // "default" resolves to the root ~/.hermes, not ~/.hermes/profiles/default
+          const profileDir = name === 'default' ? HERMES_HOME : join(HERMES_HOME, 'profiles', name);
           const soulPath = join(profileDir, 'SOUL.md');
           const skillsDir = join(profileDir, 'skills');
 
@@ -930,7 +931,9 @@ async function handleRequest(req: Request): Response {
         try {
           const name = url.searchParams.get('name');
           if (!name) { return jsonErr(400, 'Name required'); return; }
-          const configPath = join(HERMES_HOME, 'profiles', name, 'config.yaml');
+          const configPath = name === 'default'
+            ? join(HERMES_HOME, 'config.yaml')
+            : join(HERMES_HOME, 'profiles', name, 'config.yaml');
           const yaml = existsSync(configPath) ? readFileSync(configPath, 'utf-8') : '# No config yet';
           return jsonOk({ yaml });
         } catch (e: any) {
@@ -945,7 +948,9 @@ async function handleRequest(req: Request): Response {
           if (!name) { return jsonErr(400, 'Name required'); return; }
           const body = JSON.parse(await req.text());
           if (!body.yaml_text) throw new Error('yaml_text required');
-          const configPath = join(HERMES_HOME, 'profiles', name, 'config.yaml');
+          const configPath = name === 'default'
+            ? join(HERMES_HOME, 'config.yaml')
+            : join(HERMES_HOME, 'profiles', name, 'config.yaml');
           // Validate YAML before writing
           YAML.parse(body.yaml_text);
           writeFileSync(configPath, body.yaml_text);
@@ -957,8 +962,54 @@ async function handleRequest(req: Request): Response {
       }
     }
 
-    // Env Management
-    if (pathname === '/api/hermes/env' && method === 'GET') {
+
+      // Profile .env — raw text, respects "default" = root ~/.hermes
+      if (pathname === '/api/hermes/profiles/env' && method === 'GET') {
+        const name = url.searchParams.get('name');
+        if (!name) return jsonErr(400, 'name required');
+        const envPath = name === 'default'
+          ? join(HERMES_HOME, '.env')
+          : join(HERMES_HOME, 'profiles', name, '.env');
+        const text = existsSync(envPath) ? readFileSync(envPath, 'utf-8') : '';
+        return jsonOk({ env: text });
+      }
+
+      if (pathname === '/api/hermes/profiles/env' && method === 'PUT') {
+        const name = url.searchParams.get('name');
+        if (!name) return jsonErr(400, 'name required');
+        const envPath = name === 'default'
+          ? join(HERMES_HOME, '.env')
+          : join(HERMES_HOME, 'profiles', name, '.env');
+        const body = JSON.parse(await req.text());
+        writeFileSync(envPath, body.env ?? '');
+        return jsonOk({ ok: true });
+      }
+
+      // Profile SOUL.md — raw text read/write, respects "default" = root ~/.hermes
+      if (pathname === '/api/hermes/profiles/soul' && method === 'GET') {
+        const name = url.searchParams.get('name');
+        if (!name) return jsonErr(400, 'name required');
+        const soulPath = name === 'default'
+          ? join(HERMES_HOME, 'SOUL.md')
+          : join(HERMES_HOME, 'profiles', name, 'SOUL.md');
+        const text = existsSync(soulPath) ? readFileSync(soulPath, 'utf-8') : '';
+        return jsonOk({ content: text });
+      }
+
+      if (pathname === '/api/hermes/profiles/soul' && method === 'PUT') {
+        const name = url.searchParams.get('name');
+        if (!name) return jsonErr(400, 'name required');
+        const soulPath = name === 'default'
+          ? join(HERMES_HOME, 'SOUL.md')
+          : join(HERMES_HOME, 'profiles', name, 'SOUL.md');
+        const body = JSON.parse(await req.text());
+        if (body.content !== undefined) writeFileSync(soulPath, body.content);
+        return jsonOk({ ok: true });
+      }
+
+      // Env Management
+
+      if (pathname === '/api/hermes/env' && method === 'GET') {
       try {
         const envText = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, 'utf-8') : '';
         const vars: any[] = [];
@@ -1524,6 +1575,14 @@ Bun.serve({
   fetch(req, server) {
     const pathname = new URL(req.url).pathname;
     if (pathname === '/ws/chat' || pathname === '/terminal') {
+      if (pathname === '/terminal') {
+        const origin = req.headers.get('origin') || req.headers.get('host') || '';
+        const allowed = /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[\:\:1\])(:\d+)?$/.test(origin) || origin.includes(GATEWAY_HOST) || origin === '';
+        if (!allowed) {
+          console.warn('[terminal] WS upgrade blocked — invalid origin:', origin);
+          return new Response('Forbidden', { status: 403 });
+        }
+      }
       server.upgrade(req, { data: { pathname } });
       return;
     }
