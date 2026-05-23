@@ -1,7 +1,7 @@
 {
   "name": "don-os-frontend",
   "version": "0.1.1",
-  "description": "Don OS Dashboard \u2014 SolidJS+Vite frontend for Hermes Agent",
+  "description": "Don OS Dashboard — SolidJS+Vite frontend for Hermes Agent",
   "private": true,
   "type": "module",
   "bin": {
@@ -30,7 +30,8 @@
     "marked": "^18.0.0",
     "monaco-editor": "^0.55.1",
     "shiki": "3.9.0",
-    "solid-js": "^1.9.4"
+    "solid-js": "^1.9.4",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/dompurify": "^3.2.0",

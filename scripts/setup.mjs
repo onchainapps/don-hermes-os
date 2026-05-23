@@ -17,8 +17,9 @@ import { createInterface } from 'readline';
 import path from 'path';
 import os from 'os';
 
-const ROOT = path.dirname(new URL(import.meta.url).pathname);
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const HOME = os.homedir();
+const CLONE_ROOT = ROOT;   // absolute path of the cloned repo, used for ecosystem.config.js rewriting
 const HERMES_DIR = `${HOME}/.hermes`;
 const PROFILES_DIR = `${HERMES_DIR}/profiles`;
 const LOGS_DIR = `${HOME}/logs`;
@@ -120,6 +121,50 @@ function generateApiKey() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  ECOSYSTEM PATH REWRITER
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Rewrite hardcoded absolute cwd paths in PM2 ecosystem configs.
+ *
+ * The committed ecosystem files contain cwd: "/home/don/dev/git/don-hermes-os/…"
+ * from the original author. On a fresh clone those paths don't exist.
+ * We scan every cwd: value, and if it is absolute but NOT already under
+ * CLONE_ROOT, we rewrite the prefix so the config is portable.
+ */
+function rewriteEcosystemPaths() {
+  const configs = [
+    path.join(ROOT, 'ecosystem.config.js'),
+    path.join(ROOT, 'ecosystem.packaged.config.js'),
+  ];
+  let changed = 0;
+  for (const cfgPath of configs) {
+    if (!existsSync(cfgPath)) continue;
+    let content = readFileSync(cfgPath, 'utf-8');
+    const original = content;
+    const cwdRe   = /cwd:\s*['"`]([^'"`]+)['"`]/g;
+    const fixes   = [];
+    let m;
+    while ((m = cwdRe.exec(content)) !== null) {
+      const abs = m[1];
+      if (
+        path.isAbsolute(abs)
+        && path.resolve(abs) !== path.resolve(CLONE_ROOT)
+        && !path.resolve(abs).startsWith(CLONE_ROOT + path.sep)
+      ) {
+        const rel  = path.relative(CLONE_ROOT, abs);
+        const next = path.resolve(CLONE_ROOT, rel);
+        fixes.push([abs, next]);
+      }
+    }
+    if (fixes.length) log('🔧', `  paths rewritten in ${path.basename(cfgPath)}`);
+    for (const [oldVal, newVal] of fixes) content = content.split(oldVal).join(newVal);
+    if (content !== original) { writeFileSync(cfgPath, content, 'utf-8'); changed++; }
+  }
+  return changed;
+}
+
+// ═══════════════════════════════════════════════════════════
 //  MAIN
 // ═══════════════════════════════════════════════════════════
 
@@ -180,17 +225,25 @@ async function main() {
     }
   }
 
-  // ── 3. Ask questions (only if interactive) ─────────────
+  // ── 3. Rewrite PM2 ecosystem paths (always, on every run) ──
+
+  const ecoRewritten = rewriteEcosystemPaths();
+  if (ecoRewritten) {
+    log('✅', `PM2 ecosystem paths updated (${ecoRewritten} file(s))`, 'green');
+  }
+
+  // ── 4. Ask questions (only if interactive) ─────────────────
 
   const isInteractive = process.stdin.isTTY;
   let createDefaultProfile = false;
+  let regenerate = false;
   let corsIp = localIp;
   let corsPorts = ['3001', '3002'];
   let corsPortsDefault = ['3001', '3002'];
 
   if (ciMode) {
-    // Non-interactive: auto-create default profile
     createDefaultProfile = true;
+    regenerate = process.argv.includes('--regenerate');
     corsIp = localIp;
     log('🤖', `CI mode: auto-creating default profile with detected IP ${localIp}`);
   } else if (isInteractive) {
@@ -224,6 +277,24 @@ async function main() {
     const soulSrc = `${ROOT}/../SOUL.md`;
     if (existsSync(soulSrc)) {
       writeFileSync(`${defaultProfileDir}/SOUL.md`, readFileSync(soulSrc, 'utf-8'));
+      log('   ', '  (copied SOUL.md)');
+    }
+  } else if (regenerate && hasProfiles) {
+    // ── --regenerate: overwrite/create default profile .env in-place ──
+    const defaultProfileDir = `${PROFILES_DIR}/default`;
+    mkdirSync(defaultProfileDir, { recursive: true });
+    const port = 8650;
+    const apiKey = generateApiKey();
+    const env = generateProfileEnv(corsIp, port, apiKey, corsPorts);
+    writeFileSync(`${defaultProfileDir}/.env`, env);
+    log('🔄', `Regenerated default profile .env at ${defaultProfileDir}/.env`, 'green');
+
+    // Copy SOUL.md if available
+    // Copy SOUL.md if available
+    const soulSrc = `${ROOT}/../SOUL.md`;
+    const soulHerma = `${defaultProfileDir}/SOUL.md`;
+    if (existsSync(soulSrc)) {
+      writeFileSync(soulHerma, readFileSync(soulSrc, 'utf-8'));
       log('   ', '  (copied SOUL.md)');
     }
   } else if (hasProfiles) {

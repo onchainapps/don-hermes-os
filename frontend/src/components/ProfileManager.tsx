@@ -1,5 +1,6 @@
 import { createSignal, For, Show, createMemo, createEffect, onMount, onCleanup } from 'solid-js';
 import { hermesGet, hermesPost, hermesDelete, hermesPut } from '../lib/hermesApi';
+import YAML from 'yaml';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,12 @@ export default function ProfileManager() {
 
   const [configProfile, setConfigProfile] = createSignal<string | null>(null);
   const [configYaml, setConfigYaml] = createSignal('');
+  const [configEnv, setConfigEnv] = createSignal('');
+  const [configSoul, setConfigSoul] = createSignal('');
+  const [configTab, setConfigTab] = createSignal<'yaml' | 'env' | 'soul'>('yaml');
   const [configLoading, setConfigLoading] = createSignal(false);
+  const [envLoading, setEnvLoading] = createSignal(false);
+  const [soulLoading, setSoulLoading] = createSignal(false);
   const [configStatus, setConfigStatus] = createSignal<string | null>(null);
   const [showCreateForm, setShowCreateForm] = createSignal(false);
   
@@ -105,15 +111,6 @@ export default function ProfileManager() {
 
   onMount(fetchProfiles);
 
-  // Auto-poll every 30s so status stays fresh without manual refresh
-  let pollTimer: ReturnType<typeof setInterval>;
-  onMount(() => {
-    pollTimer = setInterval(() => {
-      if (!refreshingProfile()) fetchProfiles();
-    }, 30000);
-  });
-  onCleanup(() => clearInterval(pollTimer));
-
   const handleCreate = async (e: Event) => {
     e.preventDefault();
     if (!newName()) return;
@@ -178,23 +175,71 @@ export default function ProfileManager() {
     }
   };
 
-  const saveConfig = async () => {
-    const name = configProfile();
-    if (!name) return;
-    setConfigStatus('Saving...');
+  const loadEnv = async (name: string) => {
+    setEnvLoading(true);
     try {
-      await hermesPut(`/profiles/config/raw?name=${encodeURIComponent(name)}`, { yaml_text: configYaml() });
-      setConfigStatus('Saved ✓');
-      setTimeout(() => setConfigStatus(null), 2000);
+      const data = await hermesGet<{ env: string }>(`/profiles/env?name=${encodeURIComponent(name)}`);
+      setConfigEnv(data.env || '');
     } catch (e: any) {
-      setConfigStatus(`Error: ${e.message}`);
+      setConfigStatus(`Failed to load .env: ${e.message}`);
+    } finally {
+      setEnvLoading(false);
+    }
+  };
+  const loadSoul = async (name: string) => {
+    setSoulLoading(true);
+    try {
+      const data = await hermesGet<{ content: string }>(`/profiles/soul?name=${encodeURIComponent(name)}`);
+      setConfigSoul(data.content || '');
+    } catch (e: any) {
+      setConfigStatus(`Failed to load SOUL.md: ${e.message}`);
+    } finally {
+      setSoulLoading(false);
+    }
+  };
+
+
+  const formatYaml = () => {
+    try {
+      const parsed = YAML.parse(configYaml());
+      setConfigYaml(YAML.stringify(parsed, { lineWidth: 120, indent: 2 }));
+    } catch (e: any) {
+      setConfigStatus(`Format error: ${e.message}`);
     }
   };
 
   createEffect(() => {
     const name = configProfile();
-    if (name) loadConfig(name);
+    const tab = configTab();
+    if (!name) return;
+    if (tab === 'yaml') loadConfig(name);
+    if (tab === 'env') loadEnv(name);
+    if (tab === 'soul') loadSoul(name);
   });
+
+  // Reset to yaml tab when modal opens for a new profile
+  createEffect(() => {
+    const name = configProfile();
+    if (name) setConfigTab('yaml');
+  });
+
+  const saveConfig = async () => {
+    const name = configProfile();
+    if (!name) return;
+    setConfigStatus('Saving...');
+    try {
+      if (configTab() === 'yaml') {
+        await hermesPut(`/profiles/config/raw?name=${encodeURIComponent(name)}`, { yaml_text: configYaml() });
+        setConfigStatus('Saved ✓');
+      } else {
+        await hermesPut(`/profiles/env?name=${encodeURIComponent(name)}`, { env: configEnv() });
+        setConfigStatus('Saved ✓');
+      }
+      setTimeout(() => setConfigStatus(null), 2000);
+    } catch (e: any) {
+      setConfigStatus(`Error: ${e.message}`);
+    }
+  };
 
   const statusColor = (status: string) => {
     if (status === 'active') return '#00ff9f';
@@ -217,6 +262,20 @@ export default function ProfileManager() {
           <h1 class="text-sm font-bold tracking-widest" style={{ color: '#00f3ff', 'text-shadow': '0 0 6px #00f3ff' }}>
             HERMES PROFILES
           </h1>
+          <button
+            onClick={fetchProfiles}
+            disabled={loading()}
+            class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold tracking-wider transition-all"
+            style={{
+              background: loading() ? 'rgba(0,243,255,0.04)' : 'rgba(0,243,255,0.08)',
+              color: '#00f3ff',
+              border: '1px solid rgba(0,243,255,0.2)',
+              cursor: loading() ? 'default' : 'pointer',
+              opacity: loading() ? 0.5 : 1,
+            }}
+          >
+            ↻ REFRESH
+          </button>
         </div>
         <div class="text-[10px] text-hermes-text-dim uppercase tracking-tighter">
           System-Level Agent Management
@@ -571,7 +630,7 @@ export default function ProfileManager() {
           onClick={() => setConfigProfile(null)}
         >
           <div
-            class="w-[700px] max-h-[80vh] flex flex-col rounded-xl overflow-hidden"
+            class="w-[700px] max-h-[80vh] flex flex-col rounded-xl overflow-auto resize"
             style={{ background: '#0a0a0f', border: '1px solid rgba(0,243,255,0.2)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -591,15 +650,61 @@ export default function ProfileManager() {
               </button>
             </div>
 
+            {/* Tabs */}
+            <div class="flex items-center gap-1 px-4 border-b border-hermes-cyan/10">
+              {<button
+                onClick={() => setConfigTab('yaml')}
+                class="px-3 py-2 text-[10px] font-bold tracking-wider transition-all"
+                style={{
+                  color: configTab() === 'yaml' ? '#00f3ff' : '#555',
+                  'border-bottom': configTab() === 'yaml' ? '2px solid #00f3ff' : '2px solid transparent',
+                  background: configTab() === 'yaml' ? 'rgba(0,243,255,0.05)' : 'transparent',
+                }}
+              >
+                config.yaml
+              </button>}
+              {<button
+                onClick={() => setConfigTab('env')}
+                class="px-3 py-2 text-[10px] font-bold tracking-wider transition-all"
+                style={{
+                  color: configTab() === 'env' ? '#00f3ff' : '#555',
+                  'border-bottom': configTab() === 'env' ? '2px solid #00f3ff' : '2px solid transparent',
+                  background: configTab() === 'env' ? 'rgba(0,243,255,0.05)' : 'transparent',
+                }}
+              >
+                .env
+              </button>}
+            </div>
+
             {/* Editor */}
             <div class="flex-1 overflow-auto p-4">
               <Show when={configLoading()} fallback={
-                <textarea
-                  class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
-                  style={{ color: '#e4e4e7' }}
-                  value={configYaml()}
-                  onInput={(e) => setConfigYaml(e.currentTarget.value)}
-                />
+                <Show when={configTab() === 'yaml'} fallback={
+                  <textarea
+                    class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
+                    style={{ color: '#e4e4e7' }}
+                    value={configEnv()}
+                    onInput={(e) => setConfigEnv(e.currentTarget.value)}
+                  />
+                }>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-hermes-text-dim font-mono">{configProfile()}</span>
+                      <button
+                        onClick={formatYaml}
+                        class="px-2 py-1 text-[9px] font-bold border border-hermes-cyan/30 rounded hover:bg-hermes-cyan/10 text-hermes-cyan transition-all"
+                      >
+                        ✎ FORMAT YAML
+                      </button>
+                    </div>
+                    <textarea
+                      class="w-full h-[400px] bg-black/40 border border-white/10 rounded p-3 text-xs font-mono focus:outline-none focus:border-hermes-cyan/50 resize-y"
+                      style={{ color: '#e4e4e7' }}
+                      value={configYaml()}
+                      onInput={(e) => setConfigYaml(e.currentTarget.value)}
+                    />
+                  </div>
+                </Show>
               }>
                 <div class="flex items-center justify-center py-12">
                   <div class="text-hermes-cyan text-[10px] font-mono animate-pulse">LOADING...</div>
