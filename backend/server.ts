@@ -30,6 +30,53 @@ const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || '8642');
 const GATEWAY_AUTH = process.env.GATEWAY_AUTH || process.env.HERMES_GATEWAY_TOKEN || '';
 const PROJECT_NAME = process.env.PROJECT_NAME || 'don-os-backend';
 
+// ── Typed interfaces ─────────────────────────────────────────────────────────────────
+interface EnvVarEntry {
+  key: string;
+  value: string;
+  is_set: boolean;
+  category: 'tool' | 'setting';
+}
+
+interface ProjectEntry {
+  name: string;
+  path: string;
+  hasGit: boolean;
+  hasPackage: boolean;
+}
+
+interface FileEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+}
+
+interface HermesEvent {
+  type: 'message' | 'tool_call' | 'tool_result' | 'error' | 'done';
+  content?: string;
+  toolName?: string;
+  toolInput?: unknown;
+  toolOutput?: string;
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+interface HermesRunResponse {
+  id: string;
+  ok: boolean;
+  profile?: string;
+}
+
+interface HermesProfile {
+  name: string;
+  status: 'active' | 'standby';
+  gatewayPort: number;
+  pid?: number;
+}
+
 // ── WebSocket handlers (Bun native) ─────────────────────────────────────────────────────────────────────
 const chatRunners = new Map<Bun.ServerWebSocket, {
   runId: string | null;
@@ -53,7 +100,7 @@ async function handleChatMessage(ws: Bun.ServerWebSocket, msg: string | ArrayBuf
   let parsed: unknown;
   try {
     parsed = JSON.parse(typeof msg === 'string' ? msg : msg.toString());
-    log('message_received', { type: (parsed as any)?.type });
+    log('message_received', { type: (parsed as { type?: string })?.type });
   } catch {
     ws.send(JSON.stringify({ type: 'error', message: 'Invalid JSON' }));
     log('error', { reason: 'invalid_json' });
@@ -85,10 +132,10 @@ async function handleChatMessage(ws: Bun.ServerWebSocket, msg: string | ArrayBuf
       const newAbort = new AbortController();
       chatRunners.set(ws, { runId: null, abort: newAbort });
 
-      const input = (parsed as any).input || '';
-      const conversation_history = (parsed as any).conversation_history || [];
-      const label = (parsed as any).label;
-      const profile = (parsed as any).profile;
+      const input = (parsed as { input?: string }).input || '';
+      const conversation_history = (parsed as { conversation_history?: unknown[] }).conversation_history || [];
+      const label = (parsed as { label?: string }).label;
+      const profile = (parsed as { profile?: string }).profile;
 
       log('chat_start', { inputLength: input.length, hasHistory: conversation_history.length > 0, label, profile });
 
@@ -272,7 +319,7 @@ function getStats() {
 async function readBody(req: Request): Promise<string> {
   const len = parseInt(req.headers.get('content-length') || '0', 10);
   if (len > MAX_BODY_SIZE) throw new Error('Request body too large (max 1MB)');
-  return await readBody(req);
+  return await req.text();
 }
 
 function tailFile(filePath: string, lines: number): string[] {
@@ -569,7 +616,9 @@ async function handleRequest(req: Request): Response {
             }
 
             const templateName = template || 'default';
-            const templateDir = `${process.env.HOME || '/home/don'}/.hermes/profiles/${templateName}`;
+            const templateDir = templateName === 'default'
+              ? `${process.env.HOME || '/home/don'}/.hermes`
+              : `${process.env.HOME || '/home/don'}/.hermes/profiles/${templateName}`;
             const hasTemplate = existsSync(templateDir) && templateName !== 'default';
 
             if (hasTemplate) {
@@ -590,7 +639,9 @@ async function handleRequest(req: Request): Response {
             }
 
             // 3. Set up .env with unique port + fresh API key
-            const templateEnvPath = `${process.env.HOME || '/home/don'}/.hermes/profiles/${templateName}/.env`;
+            const templateEnvPath = templateName === 'default'
+              ? `${process.env.HOME || '/home/don'}/.hermes/.env`
+              : `${process.env.HOME || '/home/don'}/.hermes/profiles/${templateName}/.env`;
             const newEnvPath = `${profileDir}/.env`;
 
             // Generate a new strong API key
@@ -599,6 +650,15 @@ async function handleRequest(req: Request): Response {
             // Assign a unique port (starting from 8650)
             const usedPorts = new Set();
             try {
+              // Check default profile port first
+              const defaultEnv = `${process.env.HOME || '/home/don'}/.hermes/.env`;
+              if (existsSync(defaultEnv)) {
+                const content = readFileSync(defaultEnv, 'utf-8');
+                const portMatch = content.match(/API_SERVER_PORT=(\d+)/);
+                if (portMatch) usedPorts.add(parseInt(portMatch[1]));
+              }
+              
+              // Check named profiles
               const allProfiles = readdirSync(`${process.env.HOME || '/home/don'}/.hermes/profiles`);
               for (const p of allProfiles) {
                 const pEnv = `${process.env.HOME || '/home/don'}/.hermes/profiles/${p}/.env`;
@@ -978,7 +1038,7 @@ async function handleRequest(req: Request): Response {
       if (pathname === '/api/hermes/env' && method === 'GET') {
       try {
         const envText = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, 'utf-8') : '';
-        const vars: any[] = [];
+        const vars: EnvVarEntry[] = [];
         for (const line of envText.split('\n')) {
           const trimmed = line.trim();
           if (!trimmed || trimmed.startsWith('#')) continue;
@@ -1273,7 +1333,7 @@ async function handleRequest(req: Request): Response {
   if (pathname === '/api/projects' && method === 'GET') {
     try {
       const devDir = join(process.env.HOME || '/home/don', 'dev');
-      const projects: any[] = [];
+      const projects: ProjectEntry[] = [];
       for (const entry of readdirSync(devDir, { withFileTypes: true })) {
         if (entry.isDirectory()) {
           const path = join(devDir, entry.name);
@@ -1298,7 +1358,7 @@ async function handleRequest(req: Request): Response {
   if (pathname === '/api/files' && method === 'GET') {
     try {
       const targetPath = decodeURIComponent(url.searchParams.get('path') || process.env.HOME || '/home/don');
-      const entries: any[] = [];
+      const entries: FileEntry[] = [];
       for (const entry of readdirSync(targetPath, { withFileTypes: true })) {
         entries.push({
           name: entry.name,
@@ -1553,7 +1613,10 @@ async function handleRequest(req: Request): Response {
 const PROFILE_BASE_DIR = join(process.env.HOME || '/home/don', '.hermes/profiles');
 
 function readProfileEnv(profileName: string): { port?: string; key?: string } {
-  const envPath = join(PROFILE_BASE_DIR, profileName, '.env');
+  // "default" profile uses root ~/.hermes/.env, not ~/.hermes/profiles/default/.env
+  const envPath = profileName === 'default'
+    ? join(HERMES_HOME, '.env')
+    : join(PROFILE_BASE_DIR, profileName, '.env');
   if (!existsSync(envPath)) return {};
   const content = readFileSync(envPath, 'utf-8');
   // Parse line by line, last occurrence wins (supports env files with override order)

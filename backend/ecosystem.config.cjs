@@ -1,2 +1,46 @@
-// Per-project PM2 config removed — all services defined in ~/dev/ecosystem.config.cjs
-// Boot everything: pm2 start ~/dev/ecosystem.config.cjs
+module.exports = {
+  apps: [
+    {
+      name: 'don-os-backend-prod',
+      script: '/home/don/dev/git/don-hermes-os/backend/server.ts',
+      cwd: '/home/don/dev/git/don-hermes-os/backend',
+      interpreter: 'bun',
+      exec_mode: 'fork',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: '3001',
+        GATEWAY_AUTH: '11e5829a58654e1588fe812789b0c5b6df4ed14b86c67d6d',
+        GATEWAY_HOST: '127.0.0.1',
+        GATEWAY_PORT: '8642',
+      },
+      error_file: '/home/don/logs/don-os-backend-prod-error.log',
+      out_file: '/home/don/logs/don-os-backend-prod-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
+    {
+      name: 'don-os-backend-dev',
+      script: '/home/don/dev/git/don-hermes-os/backend/server.ts',
+      cwd: '/home/don/dev/git/don-hermes-os/backend',
+      interpreter: 'bun',
+      exec_mode: 'fork',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'development',
+        PORT: '3003',
+        GATEWAY_AUTH: '11e5829a58654e1588fe812789b0c5b6df4ed14b86c67d6d',
+        GATEWAY_HOST: '127.0.0.1',
+        GATEWAY_PORT: '8642',
+      },
+      error_file: '/home/don/logs/don-os-backend-dev-error.log',
+      out_file: '/home/don/logs/don-os-backend-dev-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
+  ],
+};

@@ -37,7 +37,7 @@ Both flags together = fully headless, fully repeatable.
 1. **Detect** — local IP, GPU(s), toolchain (bun / node / pm2 / nginx / hermes / openssl)
 2. **Rewrite PM2 ecosystem paths** — always runs; patches `ecosystem.config.js` and `ecosystem.packaged.config.js` to replace any hardcoded absolute `cwd:` that does not live under the current clone root. Idempotent: no-op if paths already point here.
 3. **Generate/regenerate profile**  
-   - No existing profiles → creates `~/.hermes/profiles/default/.env` (and copies `../SOUL.md` if present)  
+   - No existing profiles → creates `~/.hermes/.env` (default profile in root directory)
    - Existing profiles + `--regenerate` → rewrites `.env` in-place, keeps profile directory  
    - Existing profiles, no flag → skips
 4. **Print next steps** — `pm2 start ecosystem.config.js`, browser URL, etc.

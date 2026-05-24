@@ -87,6 +87,10 @@ export default function ProfileChat(props: ProfileChatProps) {
   const MAX_RECONNECT = 5;
   const RECONNECT_BASE_MS = 500;
   const [_sending, _setSending] = createSignal(false);
+  // Per-instance SSE stream refs — signals prevent cross-instance takeover
+  // when multiple ProfileChat windows are mounted via <For>.
+  const [_abortCtrl, _setAbortCtrl] = createSignal<AbortController | null>(null);
+  const [_reader, _setReader] = createSignal<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const pendingTool: { id: string; name: string; startTime: number }[] = [];
   const [isMinimized, setIsMinimized] = createSignal(false);
   const [position, setPosition] = createSignal({
@@ -125,8 +129,6 @@ export default function ProfileChat(props: ProfileChatProps) {
   let saveTimeout: number | null = null;
   let fileInputRef: HTMLInputElement | undefined;
   let messagesEndRef: HTMLDivElement | undefined;
-  let abortController: AbortController | null = null;
-  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   // Auto-scroll on new messages
   let prevMsgCount = 0;
@@ -197,16 +199,7 @@ export default function ProfileChat(props: ProfileChatProps) {
       return true;
     }
     if (cmd === '/stop') {
-      if (abortController) {
-        abortController.abort();
-        abortController = null;
-      }
-      if (reader) {
-        reader.cancel().catch(() => {});
-        reader = null;
-      }
-      setIsStreaming(false);
-      stopThinkingAnimation();
+      stopStreaming();
       return true;
     }
     if (cmd === '/retry') {
@@ -443,19 +436,20 @@ export default function ProfileChat(props: ProfileChatProps) {
   // ── Send message (streaming via Runs API) ──
 
   const stopStreaming = () => {
-    if (abortController) {
-      abortController.abort();
-      abortController = null;
+    if (_abortCtrl()) {
+      _abortCtrl()!.abort();
+      _setAbortCtrl(null);
     }
-    if (reader) {
-      reader.cancel().catch(() => {});
-      reader = null;
+    if (_reader()) {
+      _reader()!.cancel().catch(() => {});
+      _setReader(null);
     }
     setIsStreaming(false);
     stopThinkingAnimation();
   };
 
   const sendMessage = async () => {
+
     const text = input().trim();
     if (!text) return;
 
@@ -492,9 +486,10 @@ export default function ProfileChat(props: ProfileChatProps) {
     setMessages(prev => [...prev, assistantPlaceholder]);
 
     let fullContent = '';
-    abortController = new AbortController();
-    const signal = abortController.signal;
-    reader = null;
+    const ctrl = new AbortController();
+    _setAbortCtrl(ctrl);
+    const signal = ctrl.signal;
+    _setReader(null);
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -507,7 +502,7 @@ export default function ProfileChat(props: ProfileChatProps) {
       };
       if (sessionId()) body.session_id = sessionId();
 
-      const createTimeout = setTimeout(() => abortController?.abort(), 60000);
+      const createTimeout = setTimeout(() => ctrl?.abort(), 60000);
       const createRes = await fetch(`${apiBase}/v1/runs`, {
         method: 'POST',
         headers,
@@ -546,7 +541,7 @@ export default function ProfileChat(props: ProfileChatProps) {
         throw new Error(errorMsg);
       }
 
-      reader = streamRes.body.getReader();
+      _setReader(streamRes.body.getReader());
       const decoder = new TextDecoder();
       let buffer = '';
       let userStopped = false;
@@ -625,15 +620,15 @@ export default function ProfileChat(props: ProfileChatProps) {
 
       // ── Reconnect on stream drop ──
       try {
-        const ok = await consumeEvents(reader!, decoder);
-        reader = null;
+        const ok = await consumeEvents(_reader()!, decoder);
+        _setReader(null);
         if (!ok) log('Stream ended without run.completed');
       } catch (err2: any) {
         if (userStopped) {
           log('Stopped by user');
         } else if (err2?.name === 'AbortError') {
           log('Stream aborted — attempting reconnect');
-          reader = null;
+          _setReader(null);
           if (rId && !userStopped) {
             setIsReconnecting(true);
             let recovered = false;
@@ -680,7 +675,7 @@ export default function ProfileChat(props: ProfileChatProps) {
                     signal: AbortSignal.timeout(120000),
                   });
                   if (streamRes2.ok && streamRes2.body) {
-                    const ok2 = await consumeEvents(streamRes2.body.getReader(), decoder);
+                    const ok2 = await consumeEvents(_reader()!, decoder);
                     if (ok2) { recovered = true; break; }
                   }
                 }
@@ -729,11 +724,11 @@ export default function ProfileChat(props: ProfileChatProps) {
       setIsStreaming(false);
       stopThinkingAnimation();
       setReconnectAttempts(0);
-      if (reader) {
-        reader.cancel().catch(() => {});
-        reader = null;
+      if (_reader()) {
+        _reader()!.cancel().catch(() => {});
+        _setReader(null);
       }
-      abortController = null;
+      _setAbortCtrl(null);
       scheduleSave();
     }
   };

@@ -265,8 +265,8 @@ async function main() {
 
   if (createDefaultProfile && !hasProfiles) {
     mkdirSync(PROFILES_DIR, { recursive: true });
-    const defaultProfileDir = `${PROFILES_DIR}/default`;
-    mkdirSync(defaultProfileDir, { recursive: true });
+    // Default profile lives in ~/.hermes/, not ~/.hermes/profiles/default/
+    const defaultProfileDir = HERMES_DIR;
     const port = 8650;
     const apiKey = generateApiKey();
     const env = generateProfileEnv(corsIp, port, apiKey, corsPorts);
@@ -281,8 +281,8 @@ async function main() {
     }
   } else if (regenerate && hasProfiles) {
     // ── --regenerate: overwrite/create default profile .env in-place ──
-    const defaultProfileDir = `${PROFILES_DIR}/default`;
-    mkdirSync(defaultProfileDir, { recursive: true });
+    // Default profile lives in ~/.hermes/, not ~/.hermes/profiles/default/
+    const defaultProfileDir = HERMES_DIR;
     const port = 8650;
     const apiKey = generateApiKey();
     const env = generateProfileEnv(corsIp, port, apiKey, corsPorts);
