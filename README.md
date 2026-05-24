@@ -48,6 +48,35 @@ See `SETUP.md` in the repo root for detailed installation instructions.
 > ```
 > The setup script handles this automatically (`node scripts/setup.mjs`), but if you're changing ports manually, don't forget to sync CORS.
 
+### Hermes Profile Structure
+
+**CRITICAL:** The Hermes Agent profile structure has a special case for the default profile:
+
+```
+~/.hermes/                    ← DEFAULT profile (root directory)
+├── config.yaml              ← default profile config
+├── .env                     ← default profile environment  
+├── SOUL.md                  ← default profile personality
+├── skills/                  ← default profile skills
+└── profiles/                ← named profiles directory
+    ├── don-auditor/         ← named profile
+    │   ├── config.yaml
+    │   ├── .env
+    │   ├── SOUL.md
+    │   └── skills/
+    └── don-researcher/      ← named profile
+        ├── config.yaml
+        ├── .env
+        ├── SOUL.md
+        └── skills/
+```
+
+**Key points:**
+- **Default profile** = `~/.hermes/` (root directory itself)
+- **Named profiles** = `~/.hermes/profiles/{name}/` (subdirectories)
+- There is NO `~/.hermes/profiles/default/` directory
+- Backend APIs handle this automatically when `name=default` is passed
+
 ## Features
 
 - **System Dashboard** — CPU, memory, gateway status panels

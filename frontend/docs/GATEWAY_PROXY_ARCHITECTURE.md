@@ -21,7 +21,9 @@ Browser → /gp/* → Vite proxy → Backend (localhost:3001) → Profile Gatewa
 1. **Browser** sends request to `/gp/v1/runs` with `X-Hermes-Profile: don-researcher` header
 2. **Vite proxy** (vite.config.ts) forwards `/gp/*` to `http://localhost:3001` (the backend)
 3. **Backend** (server.ts `handleGatewayProxy`) reads the `X-Hermes-Profile` header
-4. **Backend** looks up `~/.hermes/profiles/{profileName}/.env` for `API_SERVER_PORT` and `API_SERVER_KEY`
+4. **Backend** looks up the profile's `.env` for `API_SERVER_PORT` and `API_SERVER_KEY`:
+   - Default profile (`name=default`): `~/.hermes/.env`  
+   - Named profiles: `~/.hermes/profiles/{profileName}/.env`
 5. **Backend** proxies the request to `http://192.168.1.141:{port}/{path}` with `Authorization: Bearer {key}`
 6. **Response** (including SSE streaming) is piped back through all three layers
 
@@ -48,7 +50,9 @@ Browser → /gp/* → Vite proxy → Backend (localhost:3001) → Profile Gatewa
 
 ### Profile .env Format
 
-Each profile under `~/.hermes/profiles/{name}/.env` must have:
+Each profile must have an `.env` file with these keys:
+- **Default profile**: `~/.hermes/.env` 
+- **Named profiles**: `~/.hermes/profiles/{name}/.env`
 
 ```env
 API_SERVER_ENABLED=true

@@ -13,6 +13,12 @@
 - **Deployment**: PM2 (don-os-backend)
 - **Ecosystem config**: ~/dev/ecosystem.config.cjs
 
+### Hermes Profile Structure (CRITICAL)
+- **Default profile**: `~/.hermes/` (root directory - config.yaml, .env, SOUL.md)
+- **Named profiles**: `~/.hermes/profiles/{name}/` (subdirectories)
+- **NO** `~/.hermes/profiles/default/` directory exists
+- Backend `readProfileEnv()` handles `name=default` → root path automatically
+
 ## API Endpoints
 
 ### Sessions API
