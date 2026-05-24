@@ -529,7 +529,9 @@ export default function ProfileManager() {
                           </div>
                           <div class="flex justify-between">
                             <span class="text-hermes-text-dim uppercase text-[9px]">Storage Path</span>
-                            <span class="font-mono text-[9px]">~/.hermes/profiles/{profile.name}</span>
+                            <span class="font-mono text-[9px]">
+                              {profile.name === 'default' ? '~/.hermes/' : `~/.hermes/profiles/${profile.name}`}
+                            </span>
                           </div>
                           <Show when={profileDetails()?.soulContent}>
                             <div>
