@@ -1,0 +1,8 @@
+{
+  "default":     {"port": 8642, "key": "dev-key-12345"},
+  "don-auditor": {"port": 8652, "key": "6297c71ec56692111f683e44cad97042ce2fa5f6f9c229a4a3468d863675edc9"},
+  "don-developer": {"port": 8651, "key": "afa8ff859f9d97d98bbf80e229da86dac57c849f511e9ffa"},
+  "don-hermes-os-developer": {"port": 8653, "key": "df79f387f4e4ff7bac0eab299cf2e2e54827e989"},
+  "don-researcher": {"port": 8650, "key": "1429a1290cdf5fcf897d9947dc58542d"},
+  "don-template": {"port": 8654, "key": "df79f387f4e4ff7bac0eab299cf2e2e54827e989"}
+}

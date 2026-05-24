@@ -1,0 +1,7 @@
+[bun]
+# ProfileChat browser harness
+test = "./profile-chat/*.test.ts"
+
+[test]
+coverage = true
+timeout = 120000
